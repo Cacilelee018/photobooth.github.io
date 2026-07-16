@@ -1,0 +1,1879 @@
+const STORAGE_KEY = "bunny-pop-saved-strips";
+const COUNTDOWN_SECONDS = 3;
+const CUT_COUNT = 4;
+const AUTO_SHOT_GAP_MS = 900;
+const STICKER_BASE_WIDTH_RATIO = 0.17;
+const BACKDROP_LOOP_MS = 36000;
+const BACKDROP_STAR_COUNT = 240;
+const BACKDROP_STREAK_COUNT = 3;
+const MAX_BACKDROP_PIXEL_RATIO = 1.5;
+const BACKGROUND_VIDEO_RATE = 0.35;
+const BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS = 1.32;
+const BACKGROUND_VIDEO_CROSSFADE_MS = Math.round(
+  (BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS / BACKGROUND_VIDEO_RATE) * 1000,
+);
+const BACKGROUND_MUSIC_VOLUME = 0.38;
+const MUSIC_UNLOCK_EVENTS = ["pointerdown", "touchstart", "keydown"];
+const REDUCED_MOTION_QUERY = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+const themes = [
+  {
+    id: "aurora",
+    name: "Aurora Veil",
+    description: "핑크빛 오로라가 커튼처럼 흐르는 몽환적인 프레임",
+    className: "theme-aurora",
+    preview: ["#3a214a", "#f2a9d4"],
+    tagLine: "AURORA VEIL / LIGHT CURTAIN / SERIES 04",
+    shellLabel: "POLAR LIGHT DREAM ARCHIVE",
+    seed: 11,
+    palette: {
+      bgA: "#3a214a",
+      bgB: "#9b5a83",
+      bgC: "#2b1839",
+      ink: "#fff8fd",
+      border: "#f7dced",
+      frameFill: "rgba(75,38,81,0.36)",
+      accent: "#ff9fd1",
+      accentSoft: "#efd3ff",
+    },
+  },
+  {
+    id: "starlight",
+    name: "Starlit Mirror",
+    description: "수평선 위로 별빛이 번져 반사되는 고요한 우주 프레임",
+    className: "theme-starlight",
+    preview: ["#21142c", "#c27baa"],
+    tagLine: "STARLIT MIRROR / WISH UPON THE WATER / 04",
+    shellLabel: "REFLECTED STARLIGHT ARCHIVE",
+    seed: 23,
+    palette: {
+      bgA: "#21142c",
+      bgB: "#744778",
+      bgC: "#29172f",
+      ink: "#fff8fd",
+      border: "#f5ddea",
+      frameFill: "rgba(61,33,68,0.42)",
+      accent: "#e0a1d1",
+      accentSoft: "#f3d9ff",
+    },
+  },
+  {
+    id: "nebula",
+    name: "Lilac Nebula",
+    description: "라일락 성운과 미세한 별가루가 감싸는 몽환적인 프레임",
+    className: "theme-nebula",
+    preview: ["#321b48", "#d27aaf"],
+    tagLine: "LILAC NEBULA / STARDUST MEMORY / NO. 04",
+    shellLabel: "CELESTIAL CLOUD OBSERVATORY",
+    seed: 37,
+    palette: {
+      bgA: "#321b48",
+      bgB: "#8d527f",
+      bgC: "#24142f",
+      ink: "#fff7fd",
+      border: "#f3d8ef",
+      frameFill: "rgba(67,34,77,0.38)",
+      accent: "#f69acb",
+      accentSoft: "#e6cdff",
+    },
+  },
+  {
+    id: "astral",
+    name: "Astral Spiral",
+    description: "두 개의 은하 소용돌이와 푸른 성운광을 담은 프레임",
+    className: "theme-astral",
+    preview: ["#28163b", "#9b6ac8"],
+    tagLine: "ASTRAL SPIRAL / TWIN GALAXIES / SERIES 04",
+    shellLabel: "DEEP SPACE DREAM SEQUENCE",
+    seed: 53,
+    palette: {
+      bgA: "#28163b",
+      bgB: "#714595",
+      bgC: "#1b1029",
+      ink: "#fff8ff",
+      border: "#ead8f8",
+      frameFill: "rgba(55,29,70,0.4)",
+      accent: "#c99cf4",
+      accentSoft: "#f0d8ff",
+    },
+  },
+];
+
+function svgToDataUrl(svg) {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+function createStickerAssetLibrary() {
+  return [
+    {
+      id: "spectral-alien",
+      label: "Spectral Alien",
+      dataUrl: svgToDataUrl(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+          <defs>
+            <linearGradient id="spectralBody" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f7fbff"/>
+              <stop offset="56%" stop-color="#ffd0e8"/>
+              <stop offset="100%" stop-color="#b58ad9"/>
+            </linearGradient>
+            <filter id="spectralGlow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <g filter="url(#spectralGlow)" stroke="#f5f8ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M82 52c-8-20-4-34 8-34 13 0 19 12 19 29M158 52c8-20 4-34-8-34-13 0-19 12-19 29" fill="none"/>
+            <path d="M86 20l8 9-8 9-8-9zM154 20l8 9-8 9-8-9z" fill="#f3c6ff"/>
+            <path d="M65 72l30-29 15 17M175 72l-30-29-15 17" fill="none"/>
+            <path d="M69 67h102v91c0 31-23 55-51 55s-51-24-51-55z" fill="url(#spectralBody)" fill-opacity=".9"/>
+            <ellipse cx="94" cy="117" rx="17" ry="24" fill="#2a1730"/>
+            <ellipse cx="146" cy="117" rx="17" ry="24" fill="#2a1730"/>
+            <circle cx="99" cy="110" r="5" fill="#ffffff" stroke="none"/>
+            <circle cx="151" cy="110" r="5" fill="#ffffff" stroke="none"/>
+            <path d="M113 150c4 4 10 4 14 0M99 178h42" fill="none"/>
+          </g>
+        </svg>
+      `),
+    },
+    {
+      id: "pulsar-mark",
+      label: "Pulsar Mark",
+      dataUrl: svgToDataUrl(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
+          <g stroke="#f6f8ff" fill="none" stroke-linecap="round">
+            <circle cx="110" cy="110" r="12" fill="#ffffff"/>
+            <circle cx="110" cy="110" r="44" stroke-width="2" opacity=".38"/>
+            <path d="M110 14v192M14 110h192M42 42l136 136M178 42L42 178" stroke-width="5"/>
+            <path d="M80 110a30 12 0 1 0 60 0 30 12 0 1 0-60 0" stroke="#f0acd7" stroke-width="3" transform="rotate(-18 110 110)"/>
+          </g>
+        </svg>
+      `),
+    },
+    {
+      id: "orbit-seal",
+      label: "Orbit Seal",
+      dataUrl: svgToDataUrl(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220">
+          <g fill="none" stroke="#edf3ff" stroke-width="3">
+            <ellipse cx="120" cy="110" rx="94" ry="34" transform="rotate(-18 120 110)"/>
+            <ellipse cx="120" cy="110" rx="74" ry="18" transform="rotate(18 120 110)" opacity=".66"/>
+            <circle cx="120" cy="110" r="45" stroke="#d7a8f4" opacity=".8"/>
+            <path d="M120 28v164M38 110h164" opacity=".34"/>
+            <circle cx="120" cy="110" r="7" fill="#ffffff" stroke="none"/>
+            <circle cx="41" cy="134" r="6" fill="#ffabd5" stroke="none"/>
+          </g>
+        </svg>
+      `),
+    },
+    {
+      id: "seraph",
+      label: "Seraph Silhouette",
+      dataUrl: svgToDataUrl(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
+          <g fill="#f7f8ff">
+            <circle cx="110" cy="56" r="18"/>
+            <path d="M90 76h40l18 92H72z"/>
+            <path d="M84 88C48 74 28 88 18 112c28-8 47 3 65 25z"/>
+            <path d="M136 88c36-14 56 0 66 24-28-8-47 3-65 25z"/>
+            <path d="M82 112c-30 2-48 18-52 42 24-12 44-8 60 5z" opacity=".72"/>
+            <path d="M138 112c30 2 48 18 52 42-24-12-44-8-60 5z" opacity=".72"/>
+          </g>
+          <ellipse cx="110" cy="52" rx="32" ry="10" fill="none" stroke="#f0b6e3" stroke-width="4"/>
+        </svg>
+      `),
+    },
+    {
+      id: "lunar-flower",
+      label: "Lunar Flower",
+      dataUrl: svgToDataUrl(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
+          <g fill="none" stroke="#f3f6ff" stroke-width="4">
+            <path d="M110 56c-28-42-58-22-42 16 10 23 42 38 42 38s32-15 42-38c16-38-14-58-42-16z" fill="#d39be8" fill-opacity=".38"/>
+            <path d="M110 110v88M110 154c-26-19-48-12-58 8 23 0 40 10 58 26M110 168c24-18 45-14 57 5-22-1-39 7-57 20"/>
+            <circle cx="110" cy="92" r="10" fill="#ffffff"/>
+            <path d="M110 20v28M96 34h28" stroke="#ffabd5"/>
+          </g>
+        </svg>
+      `),
+    },
+  ];
+}
+
+const state = {
+  stream: null,
+  isCountingDown: false,
+  isAutoSession: false,
+  selectedThemeId: "aurora",
+  capturedPhotos: Array(CUT_COUNT).fill(null),
+  activeSlotIndex: 0,
+  savedStrips: [],
+  presetStickers: createStickerAssetLibrary(),
+  stickers: [],
+  selectedStickerId: null,
+  nextStickerId: 1,
+  frameLayout: null,
+  backdropScene: null,
+  backdropAnimationFrame: null,
+  backgroundActiveVideoIndex: 0,
+  backgroundVideoCrossfading: false,
+  backgroundVideoMonitor: null,
+  backgroundVideoTransitionTimer: null,
+  backgroundMusicDesired: true,
+  backgroundMusicUnlockHandler: null,
+};
+
+const refs = {
+  camera: document.getElementById("camera"),
+  cameraStage: document.getElementById("cameraStage"),
+  cameraStatus: document.getElementById("cameraStatus"),
+  countdown: document.getElementById("countdown"),
+  boothModeLabel: document.getElementById("boothModeLabel"),
+  currentSlotLabel: document.getElementById("currentSlotLabel"),
+  sessionMessage: document.getElementById("sessionMessage"),
+  sessionStrip: document.getElementById("sessionStrip"),
+  startCameraButton: document.getElementById("startCameraButton"),
+  captureButton: document.getElementById("captureButton"),
+  autoCaptureButton: document.getElementById("autoCaptureButton"),
+  retakeButton: document.getElementById("retakeButton"),
+  resetButton: document.getElementById("resetButton"),
+  saveButton: document.getElementById("saveButton"),
+  slotStatus: document.getElementById("slotStatus"),
+  frameStatus: document.getElementById("frameStatus"),
+  cosmicBackgroundVideos: Array.from(document.querySelectorAll(".cosmic-background-video")),
+  galaxyBackground: document.getElementById("galaxyBackground"),
+  backgroundMusic: document.getElementById("backgroundMusic"),
+  musicToggleButton: document.getElementById("musicToggleButton"),
+  stripPreview: document.getElementById("stripPreview"),
+  stripInner: document.getElementById("stripInner"),
+  stripCosmos: document.getElementById("stripCosmos"),
+  stripSlots: document.getElementById("stripSlots"),
+  stripThemeName: document.getElementById("stripThemeName"),
+  footerTimestamp: document.getElementById("footerTimestamp"),
+  themeOptions: document.getElementById("themeOptions"),
+  themeSummary: document.getElementById("themeSummary"),
+  stickerOptions: document.getElementById("stickerOptions"),
+  stickerLayer: document.getElementById("stickerLayer"),
+  clearStickersButton: document.getElementById("clearStickersButton"),
+  stickerScaleInput: document.getElementById("stickerScaleInput"),
+  stickerRotationInput: document.getElementById("stickerRotationInput"),
+  stickerFlipButton: document.getElementById("stickerFlipButton"),
+  selectedStickerLabel: document.getElementById("selectedStickerLabel"),
+  deleteStickerButton: document.getElementById("deleteStickerButton"),
+  savedGallery: document.getElementById("savedGallery"),
+  themeButtonTemplate: document.getElementById("themeButtonTemplate"),
+  stickerButtonTemplate: document.getElementById("stickerButtonTemplate"),
+};
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function pickRandom(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function formatTimestamp(date = new Date()) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function normalizeHex(hex) {
+  const value = hex.replace("#", "");
+  return value.length === 3 ? value.split("").map((char) => char + char).join("") : value;
+}
+
+function hexToRgb(hex) {
+  const numeric = Number.parseInt(normalizeHex(hex), 16);
+  return {
+    r: (numeric >> 16) & 255,
+    g: (numeric >> 8) & 255,
+    b: numeric & 255,
+  };
+}
+
+function withAlpha(hex, alpha) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function loadImage(source) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = source;
+  });
+}
+
+function getSelectedTheme() {
+  return themes.find((theme) => theme.id === state.selectedThemeId) || themes[0];
+}
+
+function getAllStickerAssets() {
+  return state.presetStickers;
+}
+
+function getSelectedSticker() {
+  return state.stickers.find((sticker) => sticker.id === state.selectedStickerId) || null;
+}
+
+function getFilledCount() {
+  return state.capturedPhotos.filter(Boolean).length;
+}
+
+function getNextEmptySlot(startIndex = 0) {
+  for (let index = startIndex; index < CUT_COUNT; index += 1) {
+    if (!state.capturedPhotos[index]) {
+      return index;
+    }
+  }
+
+  return state.capturedPhotos.findIndex((photo) => !photo);
+}
+
+function createBackdropScene() {
+  const stars = Array.from({ length: BACKDROP_STAR_COUNT }, () => ({
+    x: randomBetween(0.01, 0.99),
+    y: randomBetween(0.01, 0.99),
+    size: randomBetween(0.45, 2.5),
+    alpha: randomBetween(0.16, 0.92),
+    twinkle: randomBetween(0.45, 1.85),
+    phase: randomBetween(0, Math.PI * 2),
+    sparkle: Math.random() > 0.78,
+    color: pickRandom(["#ffffff", "#ffd8ec", "#e4c6ff", "#ff9fd1"]),
+  }));
+
+  const streaks = Array.from({ length: BACKDROP_STREAK_COUNT }, (_, index) => ({
+    y: randomBetween(0.04, 0.8),
+    length: randomBetween(140, 260),
+    angle: randomBetween(-0.5, -0.24),
+    speed: randomBetween(0.012, 0.026),
+    phase: index / BACKDROP_STREAK_COUNT,
+    alpha: randomBetween(0.06, 0.16),
+    color: pickRandom(["#ffafd9", "#e3bdff", "#c996f1"]),
+  }));
+
+  return { stars, streaks };
+}
+
+function resizeBackdropCanvas() {
+  if (!refs.galaxyBackground) {
+    return;
+  }
+
+  const ratio = Math.min(window.devicePixelRatio || 1, MAX_BACKDROP_PIXEL_RATIO);
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  refs.galaxyBackground.width = Math.round(width * ratio);
+  refs.galaxyBackground.height = Math.round(height * ratio);
+  refs.galaxyBackground.style.width = `${width}px`;
+  refs.galaxyBackground.style.height = `${height}px`;
+
+  const context = refs.galaxyBackground.getContext("2d");
+  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+  if (state.backdropScene && REDUCED_MOTION_QUERY.matches) {
+    window.requestAnimationFrame(drawBackdrop);
+  }
+}
+
+function createAuroraPath(context, band, width, height, time, offset = 0) {
+  const points = [];
+  const stepCount = 22;
+  const verticalPadding = height * 0.12;
+  const horizontalDrift = Math.sin(time * band.speed * 0.3 + band.phase) * width * 0.035;
+
+  for (let step = 0; step <= stepCount; step += 1) {
+    const ratio = step / stepCount;
+    const y = -verticalPadding + ratio * (height + verticalPadding * 2);
+    const primaryWave = Math.sin(ratio * Math.PI * 2 * band.frequency + time * band.speed + band.phase);
+    const detailWave = Math.sin(ratio * Math.PI * 5.2 - time * band.speed * 0.64 + band.phase * 1.7);
+    const x =
+      band.baseX * width +
+      horizontalDrift +
+      primaryWave * band.amplitude * width +
+      detailWave * band.amplitude * width * 0.28 +
+      offset;
+
+    points.push({ x, y });
+  }
+
+  context.beginPath();
+  context.moveTo(points[0].x, points[0].y);
+
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const current = points[index];
+    const next = points[index + 1];
+    context.quadraticCurveTo(current.x, current.y, (current.x + next.x) / 2, (current.y + next.y) / 2);
+  }
+
+  const last = points[points.length - 1];
+  context.lineTo(last.x, last.y);
+}
+
+function drawAuroraBand(context, band, width, height, time) {
+  const gradient = context.createLinearGradient(0, -height * 0.1, 0, height * 1.1);
+  gradient.addColorStop(0, withAlpha(band.colorB, 0));
+  gradient.addColorStop(0.12, withAlpha(band.colorB, 0.54));
+  gradient.addColorStop(0.44, withAlpha(band.colorA, 0.96));
+  gradient.addColorStop(0.74, withAlpha(band.colorB, 0.72));
+  gradient.addColorStop(1, withAlpha(band.colorA, 0));
+
+  context.save();
+  context.globalCompositeOperation = "screen";
+  context.globalAlpha = band.opacity;
+  context.strokeStyle = gradient;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.filter = `blur(${Math.max(18, Math.min(42, width * 0.022))}px)`;
+  context.lineWidth = Math.max(110, width * band.width);
+  createAuroraPath(context, band, width, height, time);
+  context.stroke();
+
+  context.globalAlpha = band.opacity * 0.72;
+  context.filter = `blur(${Math.max(8, Math.min(20, width * 0.011))}px)`;
+  context.lineWidth = Math.max(28, width * band.width * 0.28);
+  createAuroraPath(context, band, width, height, time, width * 0.012);
+  context.stroke();
+
+  context.filter = "none";
+  context.globalAlpha = band.opacity * 0.25;
+  context.lineWidth = 1;
+  for (let filament = -2; filament <= 2; filament += 1) {
+    createAuroraPath(context, band, width, height, time, filament * width * 0.017);
+    context.stroke();
+  }
+  context.restore();
+}
+
+function drawBackgroundStreak(context, x, y, length, angle, color, alpha) {
+  context.save();
+  context.translate(x, y);
+  context.rotate(angle);
+  context.globalAlpha = alpha;
+  const gradient = context.createLinearGradient(-length, 0, 0, 0);
+  gradient.addColorStop(0, "rgba(255,255,255,0)");
+  gradient.addColorStop(0.72, color);
+  gradient.addColorStop(1, "#ffffff");
+  context.strokeStyle = gradient;
+  context.lineWidth = 1;
+  context.lineCap = "round";
+  context.beginPath();
+  context.moveTo(-length, 0);
+  context.lineTo(0, 0);
+  context.stroke();
+  context.restore();
+}
+
+function drawBackdrop(timestamp = 0) {
+  if (!refs.galaxyBackground || !state.backdropScene) {
+    return;
+  }
+
+  const context = refs.galaxyBackground.getContext("2d");
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const progress = (timestamp % BACKDROP_LOOP_MS) / BACKDROP_LOOP_MS;
+  const time = timestamp / 1000;
+
+  context.clearRect(0, 0, width, height);
+
+  state.backdropScene.streaks.forEach((streak) => {
+    const drift = ((progress * streak.speed * 22 + streak.phase) % 1) * (width + streak.length * 1.6) - streak.length;
+    drawBackgroundStreak(context, drift, streak.y * height, streak.length, streak.angle, streak.color, streak.alpha);
+  });
+
+  state.backdropScene.stars.forEach((star, index) => {
+    const twinkle = (Math.sin(progress * Math.PI * 2 * star.twinkle + star.phase) + 1) / 2;
+    const alpha = clamp(star.alpha * (0.28 + twinkle * 0.96), 0, 1);
+    const x = star.x * width + Math.sin(progress * Math.PI * 2 + index * 0.2) * 1.2;
+    const y = star.y * height + Math.cos(progress * Math.PI * 2 + index * 0.1) * 0.8;
+
+    context.save();
+    context.translate(x, y);
+    context.globalAlpha = alpha;
+    context.fillStyle = star.color;
+    context.shadowColor = star.color;
+    context.shadowBlur = star.sparkle ? star.size * (3 + twinkle * 3) : star.size * 2;
+    context.beginPath();
+    context.arc(0, 0, Math.max(0.45, star.size * 0.36), 0, Math.PI * 2);
+    context.fill();
+
+    if (star.sparkle) {
+      const ray = star.size * (1.25 + twinkle * 1.6);
+      context.strokeStyle = star.color;
+      context.lineWidth = Math.max(0.45, star.size * 0.26);
+      context.lineCap = "round";
+      context.beginPath();
+      context.moveTo(-ray, 0);
+      context.lineTo(ray, 0);
+      context.moveTo(0, -ray);
+      context.lineTo(0, ray);
+      context.stroke();
+    }
+    context.restore();
+  });
+
+  if (!REDUCED_MOTION_QUERY.matches) {
+    state.backdropAnimationFrame = window.requestAnimationFrame(drawBackdrop);
+  }
+}
+
+function initializeBackdrop() {
+  state.backdropScene = createBackdropScene();
+  resizeBackdropCanvas();
+
+  if (state.backdropAnimationFrame) {
+    window.cancelAnimationFrame(state.backdropAnimationFrame);
+  }
+
+  state.backdropAnimationFrame = window.requestAnimationFrame(drawBackdrop);
+  window.addEventListener("resize", resizeBackdropCanvas);
+}
+
+function initializeBackgroundVideo() {
+  const videos = refs.cosmicBackgroundVideos;
+  if (videos.length < 2) {
+    return;
+  }
+
+  videos.forEach((video) => {
+    video.playbackRate = BACKGROUND_VIDEO_RATE;
+  });
+
+  const activeVideo = videos[state.backgroundActiveVideoIndex];
+  const revealVideo = () => {
+    document.body.classList.add("video-background-ready");
+
+    if (REDUCED_MOTION_QUERY.matches) {
+      videos.forEach((video) => video.pause());
+    }
+  };
+
+  if (activeVideo.readyState >= 2) {
+    revealVideo();
+  } else {
+    activeVideo.addEventListener("loadeddata", revealVideo, { once: true });
+  }
+
+  if (!REDUCED_MOTION_QUERY.matches) {
+    activeVideo.play().catch(() => {
+      document.body.classList.remove("video-background-ready");
+    });
+
+    state.backgroundVideoMonitor = window.setInterval(() => {
+      const currentVideo = videos[state.backgroundActiveVideoIndex];
+      if (
+        state.backgroundVideoCrossfading ||
+        !Number.isFinite(currentVideo.duration) ||
+        currentVideo.duration <= BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS
+      ) {
+        return;
+      }
+
+      const crossfadeStartsAt = currentVideo.duration - BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS;
+      if (currentVideo.currentTime < crossfadeStartsAt) {
+        return;
+      }
+
+      const nextVideoIndex = state.backgroundActiveVideoIndex === 0 ? 1 : 0;
+      const nextVideo = videos[nextVideoIndex];
+      state.backgroundVideoCrossfading = true;
+      nextVideo.currentTime = 0;
+      nextVideo.playbackRate = BACKGROUND_VIDEO_RATE;
+
+      nextVideo
+        .play()
+        .then(() => {
+          nextVideo.classList.add("is-visible");
+          currentVideo.classList.remove("is-visible");
+
+          state.backgroundVideoTransitionTimer = window.setTimeout(() => {
+            currentVideo.pause();
+            currentVideo.currentTime = 0;
+            state.backgroundActiveVideoIndex = nextVideoIndex;
+            state.backgroundVideoCrossfading = false;
+          }, BACKGROUND_VIDEO_CROSSFADE_MS + 120);
+        })
+        .catch(() => {
+          state.backgroundVideoCrossfading = false;
+          currentVideo.loop = true;
+        });
+    }, 160);
+  }
+}
+
+function removeMusicUnlockListeners() {
+  if (!state.backgroundMusicUnlockHandler) {
+    return;
+  }
+
+  MUSIC_UNLOCK_EVENTS.forEach((eventName) => {
+    document.removeEventListener(eventName, state.backgroundMusicUnlockHandler, true);
+  });
+  state.backgroundMusicUnlockHandler = null;
+}
+
+function updateMusicToggle() {
+  const isPlaying = !refs.backgroundMusic.paused;
+  const isWaiting = state.backgroundMusicDesired && !isPlaying;
+
+  refs.musicToggleButton.classList.toggle("is-playing", isPlaying);
+  refs.musicToggleButton.classList.toggle("is-waiting", isWaiting);
+  refs.musicToggleButton.setAttribute("aria-pressed", String(isPlaying));
+  refs.musicToggleButton.setAttribute(
+    "aria-label",
+    isPlaying ? "배경음악 끄기" : "배경음악 켜기",
+  );
+  refs.musicToggleButton.title = isPlaying
+    ? "배경음악 끄기"
+    : isWaiting
+      ? "화면을 터치하면 배경음악이 재생됩니다"
+      : "배경음악 켜기";
+}
+
+async function attemptBackgroundMusicPlayback() {
+  if (!state.backgroundMusicDesired) {
+    return;
+  }
+
+  refs.backgroundMusic.muted = false;
+
+  try {
+    await refs.backgroundMusic.play();
+    removeMusicUnlockListeners();
+  } catch (error) {
+    // Most mobile browsers allow sound only after the first user interaction.
+  }
+
+  updateMusicToggle();
+}
+
+function initializeBackgroundMusic() {
+  refs.backgroundMusic.volume = BACKGROUND_MUSIC_VOLUME;
+  refs.backgroundMusic.loop = true;
+
+  state.backgroundMusicUnlockHandler = (event) => {
+    if (refs.musicToggleButton.contains(event.target)) {
+      return;
+    }
+
+    attemptBackgroundMusicPlayback();
+  };
+
+  MUSIC_UNLOCK_EVENTS.forEach((eventName) => {
+    document.addEventListener(eventName, state.backgroundMusicUnlockHandler, true);
+  });
+
+  refs.backgroundMusic.addEventListener("play", updateMusicToggle);
+  refs.backgroundMusic.addEventListener("pause", updateMusicToggle);
+  attemptBackgroundMusicPlayback();
+}
+
+function toggleBackgroundMusic() {
+  if (!refs.backgroundMusic.paused) {
+    state.backgroundMusicDesired = false;
+    refs.backgroundMusic.pause();
+    removeMusicUnlockListeners();
+    updateMusicToggle();
+    return;
+  }
+
+  state.backgroundMusicDesired = true;
+  attemptBackgroundMusicPlayback();
+}
+
+function createFrameLayout(theme = getSelectedTheme()) {
+  const ornamentSets = {
+    aurora: {
+      crosses: [
+        { x: 0.9, y: 0.32, size: 36, opacity: 0.42, layer: 1 },
+        { x: 0.1, y: 0.7, size: 28, opacity: 0.34, layer: 1 },
+      ],
+      filaments: [
+        { x: 0.04, y: 0.18, width: 190, angle: 74, opacity: 0.62, layer: 1 },
+        { x: 0.93, y: 0.3, width: 176, angle: 104, opacity: 0.5, layer: 1 },
+        { x: 0.03, y: 0.62, width: 168, angle: 82, opacity: 0.48, layer: 1 },
+        { x: 0.9, y: 0.78, width: 182, angle: 98, opacity: 0.54, layer: 1 },
+      ],
+    },
+    starlight: {
+      crosses: [
+        { x: 0.1, y: 0.19, size: 52, opacity: 0.68, layer: 1 },
+        { x: 0.9, y: 0.44, size: 42, opacity: 0.56, layer: 1 },
+        { x: 0.08, y: 0.76, size: 36, opacity: 0.46, layer: 1 },
+      ],
+      filaments: [
+        { x: 0.05, y: 0.94, width: 390, angle: 0, opacity: 0.68, layer: 1 },
+        { x: 0.16, y: 0.965, width: 290, angle: 0, opacity: 0.38, layer: 1 },
+      ],
+    },
+    nebula: {
+      crosses: [
+        { x: 0.91, y: 0.62, size: 46, opacity: 0.54, layer: 1 },
+        { x: 0.09, y: 0.87, size: 32, opacity: 0.4, layer: 1 },
+      ],
+      filaments: [
+        { x: 0.02, y: 0.24, width: 210, angle: 28, opacity: 0.5, layer: 1 },
+        { x: 0.58, y: 0.43, width: 210, angle: -38, opacity: 0.42, layer: 1 },
+        { x: 0.03, y: 0.78, width: 220, angle: -18, opacity: 0.48, layer: 1 },
+      ],
+    },
+    astral: {
+      crosses: [
+        { x: 0.1, y: 0.23, size: 54, opacity: 0.62, layer: 1 },
+        { x: 0.91, y: 0.5, size: 44, opacity: 0.52, layer: 1 },
+      ],
+      filaments: [
+        { x: 0.02, y: 0.3, width: 220, angle: 19, opacity: 0.56, layer: 1 },
+        { x: 0.56, y: 0.7, width: 220, angle: -24, opacity: 0.5, layer: 1 },
+      ],
+    },
+  };
+
+  const ornaments = ornamentSets[theme.id];
+
+  return {
+    stars: [
+      [0.08, 0.07, 20], [0.2, 0.1, 5], [0.47, 0.055, 3], [0.79, 0.08, 8], [0.92, 0.12, 16],
+      [0.06, 0.22, 5], [0.94, 0.28, 8], [0.07, 0.38, 12], [0.93, 0.46, 5], [0.06, 0.55, 7],
+      [0.94, 0.62, 18], [0.07, 0.72, 4], [0.92, 0.8, 9], [0.08, 0.88, 14], [0.19, 0.94, 5],
+      [0.38, 0.965, 3], [0.61, 0.94, 6], [0.79, 0.965, 4], [0.91, 0.92, 18], [0.51, 0.03, 4],
+    ].map(([x, y, size], index) => ({
+      x: clamp(x + randomBetween(-0.018, 0.018), 0.04, 0.96),
+      y: clamp(y + randomBetween(-0.018, 0.018), 0.04, 0.96),
+      size,
+      opacity: randomBetween(0.5, 0.98),
+      color: index % 2 === 0 ? theme.palette.accentSoft : "#ffffff",
+      glow: withAlpha(theme.palette.accent, 0.66),
+      layer: 4,
+    })),
+    crosses: ornaments.crosses,
+    filaments: ornaments.filaments,
+  };
+}
+
+function ensureFrameLayout() {
+  if (!state.frameLayout) {
+    state.frameLayout = createFrameLayout(getSelectedTheme());
+  }
+
+  return state.frameLayout;
+}
+
+function createFrameElement(className, item) {
+  const element = document.createElement("span");
+  element.className = className;
+  element.style.left = `${item.x * 100}%`;
+  element.style.top = `${item.y * 100}%`;
+  element.style.zIndex = String(item.layer || 1);
+  return element;
+}
+
+function renderFrameDecorations() {
+  const theme = getSelectedTheme();
+  const layout = ensureFrameLayout();
+  refs.stripCosmos.innerHTML = "";
+
+  layout.filaments.forEach((filament) => {
+    const element = createFrameElement("frame-filament", filament);
+    element.style.width = `${filament.width}px`;
+    element.style.setProperty("--angle", `${filament.angle}deg`);
+    element.style.setProperty("--opacity", filament.opacity);
+    element.style.setProperty("--filament-color", withAlpha(theme.palette.accent, 0.48));
+    refs.stripCosmos.appendChild(element);
+  });
+
+  layout.crosses.forEach((cross) => {
+    const element = createFrameElement("frame-cross", cross);
+    element.style.setProperty("--cross-size", `${cross.size}px`);
+    element.style.setProperty("--cross-color", withAlpha(theme.palette.border, cross.opacity));
+    refs.stripCosmos.appendChild(element);
+  });
+
+  layout.stars.forEach((star, index) => {
+    const element = createFrameElement("frame-star", star);
+    element.style.width = `${star.size}px`;
+    element.style.height = `${star.size}px`;
+    element.style.setProperty("--star-color", star.color);
+    element.style.setProperty("--star-glow", star.glow);
+    element.style.setProperty("--opacity", star.opacity);
+    element.style.setProperty("--twinkle-delay", `${-(index % 7) * 0.43}s`);
+    refs.stripCosmos.appendChild(element);
+  });
+
+  refs.frameStatus.textContent = theme.tagLine;
+}
+
+function createThemePreview(theme, element) {
+  const [left, right] = theme.preview;
+  element.dataset.theme = theme.id;
+  element.style.setProperty("--preview-a", left);
+  element.style.setProperty("--preview-b", right);
+}
+
+function renderThemeOptions() {
+  refs.themeOptions.innerHTML = "";
+
+  themes.forEach((theme) => {
+    const button = refs.themeButtonTemplate.content.firstElementChild.cloneNode(true);
+    button.dataset.themeId = theme.id;
+    button.querySelector("strong").textContent = theme.name;
+    button.querySelector("span").textContent = theme.description;
+    button.classList.toggle("active", theme.id === state.selectedThemeId);
+    createThemePreview(theme, button.querySelector(".theme-card-preview"));
+    button.addEventListener("click", () => {
+      state.selectedThemeId = theme.id;
+      state.frameLayout = createFrameLayout(theme);
+      renderThemeOptions();
+      renderPreviewShell();
+    });
+    refs.themeOptions.appendChild(button);
+  });
+}
+
+function renderStickerOptions() {
+  refs.stickerOptions.innerHTML = "";
+
+  getAllStickerAssets().forEach((asset) => {
+    const button = refs.stickerButtonTemplate.content.firstElementChild.cloneNode(true);
+    const thumb = button.querySelector(".sticker-thumb");
+    const image = document.createElement("img");
+    image.src = asset.dataUrl;
+    image.alt = asset.label;
+    thumb.appendChild(image);
+    button.querySelector("strong").textContent = asset.label;
+    button.addEventListener("click", () => addStickerToCanvas(asset));
+    refs.stickerOptions.appendChild(button);
+  });
+}
+
+function renderSessionStrip() {
+  refs.sessionStrip.innerHTML = "";
+
+  state.capturedPhotos.forEach((photo, index) => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "session-dot";
+    item.classList.toggle("filled", Boolean(photo));
+    item.classList.toggle("active", index === state.activeSlotIndex);
+    item.innerHTML = `<span>CUT ${String(index + 1).padStart(2, "0")}</span><small>${photo ? "DONE" : "READY"}</small>`;
+    item.addEventListener("click", () => {
+      state.activeSlotIndex = index;
+      state.selectedStickerId = null;
+      renderPreviewShell();
+    });
+    refs.sessionStrip.appendChild(item);
+  });
+}
+
+function renderStripSlots() {
+  refs.stripSlots.innerHTML = "";
+
+  state.capturedPhotos.forEach((photo, index) => {
+    const slot = document.createElement("button");
+    slot.type = "button";
+    slot.className = "strip-slot";
+    slot.classList.toggle("selected", index === state.activeSlotIndex);
+    slot.addEventListener("click", () => {
+      state.activeSlotIndex = index;
+      state.selectedStickerId = null;
+      renderPreviewShell();
+    });
+
+    const badge = document.createElement("span");
+    badge.className = "slot-index";
+    badge.textContent = `CUT ${String(index + 1).padStart(2, "0")}`;
+    slot.appendChild(badge);
+
+    if (photo) {
+      const image = document.createElement("img");
+      image.src = photo;
+      image.alt = `${index + 1}번째 컷`;
+      slot.appendChild(image);
+    } else {
+      const placeholder = document.createElement("div");
+      placeholder.className = "strip-slot-placeholder";
+      placeholder.innerHTML = `<div><strong>FRAME ${String(index + 1).padStart(2, "0")}</strong><br />여기에 다음 컷이 들어와요.</div>`;
+      slot.appendChild(placeholder);
+    }
+
+    refs.stripSlots.appendChild(slot);
+  });
+}
+
+function renderStickerLayer() {
+  refs.stickerLayer.innerHTML = "";
+
+  state.stickers.forEach((sticker) => {
+    const item = document.createElement("div");
+    item.className = "sticker-item";
+    item.dataset.stickerId = sticker.id;
+    item.style.left = `${sticker.x * 100}%`;
+    item.style.top = `${sticker.y * 100}%`;
+    item.style.width = `${STICKER_BASE_WIDTH_RATIO * sticker.scale * 100}%`;
+    item.style.transform = `translate(-50%, -50%) rotate(${sticker.rotation}deg) scaleX(${sticker.mirrored ? -1 : 1})`;
+    item.classList.toggle("selected", sticker.id === state.selectedStickerId);
+
+    const image = document.createElement("img");
+    image.src = sticker.dataUrl;
+    image.alt = sticker.label;
+    item.appendChild(image);
+
+    item.addEventListener("click", (event) => {
+      event.stopPropagation();
+      state.selectedStickerId = sticker.id;
+      renderStickerLayer();
+      renderStickerControls();
+    });
+
+    item.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      startStickerDrag(event, sticker.id);
+    });
+
+    refs.stickerLayer.appendChild(item);
+  });
+}
+
+function renderStickerControls() {
+  const selectedSticker = getSelectedSticker();
+  const hasSelection = Boolean(selectedSticker);
+
+  refs.selectedStickerLabel.textContent = hasSelection ? selectedSticker.label : "선택 없음";
+  refs.stickerScaleInput.disabled = !hasSelection;
+  refs.stickerRotationInput.disabled = !hasSelection;
+  refs.stickerFlipButton.disabled = !hasSelection;
+  refs.deleteStickerButton.disabled = !hasSelection;
+
+  if (hasSelection) {
+    refs.stickerScaleInput.value = String(selectedSticker.scale);
+    refs.stickerRotationInput.value = String(selectedSticker.rotation);
+    refs.stickerFlipButton.textContent = selectedSticker.mirrored ? "좌우 반전 해제" : "좌우 반전";
+  } else {
+    refs.stickerScaleInput.value = "1";
+    refs.stickerRotationInput.value = "0";
+    refs.stickerFlipButton.textContent = "좌우 반전";
+  }
+}
+
+function renderSavedGallery() {
+  if (!state.savedStrips.length) {
+    refs.savedGallery.innerHTML = `
+      <div class="empty-gallery">
+        <div>
+          <p>아직 저장된 포토 스트립이 없어요.</p>
+          <small>4컷을 완성하고 저장하면 여기에 쌓여요.</small>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  refs.savedGallery.innerHTML = "";
+
+  state.savedStrips.forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "saved-item";
+
+    const image = document.createElement("img");
+    image.src = item.dataUrl;
+    image.alt = `${item.themeName} 포토 스트립`;
+
+    const title = document.createElement("strong");
+    title.textContent = item.themeName;
+
+    const meta = document.createElement("span");
+    meta.textContent = item.savedAt;
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "mini-button gallery-download";
+    button.textContent = "다시 저장";
+    button.addEventListener("click", () => {
+      downloadDataUrl(item.dataUrl, item.fileName || `spectra-${Date.now()}.png`);
+    });
+
+    card.append(image, title, meta, button);
+    refs.savedGallery.appendChild(card);
+  });
+}
+
+function getSessionMessage(filledCount) {
+  if (state.isAutoSession) {
+    return `${state.activeSlotIndex + 1}번째 컷을 자동 촬영 중이에요. 포즈를 바꿔 주세요.`;
+  }
+
+  if (!state.stream) {
+    return "카메라를 시작하면 바로 4컷 촬영을 진행할 수 있어요.";
+  }
+
+  if (filledCount === CUT_COUNT) {
+    return "4컷이 모두 채워졌어요. 저장하거나 원하는 컷만 다시 찍을 수 있어요.";
+  }
+
+  return `${state.activeSlotIndex + 1}번째 프레임이 선택되어 있어요. 촬영 후 다음 칸으로 넘어갑니다.`;
+}
+
+function updateControlState() {
+  const hasStream = Boolean(state.stream);
+  const filledCount = getFilledCount();
+  const activePhoto = state.capturedPhotos[state.activeSlotIndex];
+  const isBusy = state.isCountingDown || state.isAutoSession;
+  const isComplete = filledCount === CUT_COUNT;
+
+  refs.cameraStage.classList.toggle("is-ready", hasStream);
+  refs.cameraStatus.textContent = hasStream ? "카메라 연결됨" : "카메라 대기 중";
+  refs.boothModeLabel.textContent = state.isAutoSession ? "AUTO SEQUENCE" : "MANUAL";
+  refs.currentSlotLabel.textContent = `CUT ${String(state.activeSlotIndex + 1).padStart(2, "0")}`;
+  refs.sessionMessage.textContent = getSessionMessage(filledCount);
+  refs.captureButton.disabled = !hasStream || isBusy || isComplete;
+  refs.autoCaptureButton.disabled = !hasStream || isBusy || isComplete;
+  refs.retakeButton.disabled = !activePhoto || isBusy;
+  refs.saveButton.disabled = filledCount !== CUT_COUNT || isBusy;
+  refs.startCameraButton.disabled = state.isCountingDown;
+}
+
+function renderPreviewShell() {
+  const theme = getSelectedTheme();
+  const filledCount = getFilledCount();
+
+  ensureFrameLayout();
+  refs.stripPreview.className = `strip-preview ${theme.className}`;
+  refs.stripPreview.style.setProperty("--frame-border", withAlpha(theme.palette.border, 0.62));
+  refs.stripPreview.style.setProperty("--frame-glow", withAlpha(theme.palette.accent, 0.22));
+  refs.stripThemeName.textContent = theme.name;
+  refs.themeSummary.textContent = theme.name;
+  refs.footerTimestamp.textContent = filledCount ? formatTimestamp() : "READY TO SHOOT";
+  refs.slotStatus.textContent = `${filledCount} / ${CUT_COUNT} 컷 완료`;
+
+  renderFrameDecorations();
+  renderSessionStrip();
+  renderStripSlots();
+  renderStickerLayer();
+  renderStickerControls();
+  updateControlState();
+}
+
+function renderAll() {
+  renderThemeOptions();
+  renderStickerOptions();
+  renderPreviewShell();
+  renderSavedGallery();
+}
+
+async function startCamera() {
+  if (state.stream) {
+    return;
+  }
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    alert("이 브라우저에서는 카메라 기능을 사용할 수 없어요.");
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "user",
+        width: { ideal: 1280 },
+        height: { ideal: 960 },
+      },
+      audio: false,
+    });
+
+    state.stream = stream;
+    refs.camera.srcObject = stream;
+    await refs.camera.play();
+    updateControlState();
+  } catch (error) {
+    console.error(error);
+    refs.cameraStatus.textContent = "카메라 권한이 필요해요";
+    alert("카메라를 시작하지 못했어요. 브라우저 권한과 localhost/HTTPS 환경을 확인해 주세요.");
+  }
+}
+
+function stopCamera() {
+  if (!state.stream) {
+    return;
+  }
+
+  state.stream.getTracks().forEach((track) => track.stop());
+  state.stream = null;
+  refs.camera.srcObject = null;
+  updateControlState();
+}
+
+async function runCountdown() {
+  state.isCountingDown = true;
+  updateControlState();
+
+  for (let number = COUNTDOWN_SECONDS; number > 0; number -= 1) {
+    refs.countdown.textContent = String(number);
+    refs.countdown.classList.add("visible");
+    await wait(1000);
+  }
+
+  refs.countdown.classList.remove("visible");
+  state.isCountingDown = false;
+  updateControlState();
+}
+
+function captureCurrentFrame() {
+  if (!refs.camera.videoWidth || !refs.camera.videoHeight) {
+    throw new Error("카메라 프레임을 아직 사용할 수 없습니다.");
+  }
+
+  const canvas = document.createElement("canvas");
+  const width = 960;
+  const height = 1200;
+  const context = canvas.getContext("2d");
+
+  canvas.width = width;
+  canvas.height = height;
+
+  context.save();
+  context.translate(width, 0);
+  context.scale(-1, 1);
+  context.drawImage(refs.camera, 0, 0, width, height);
+  context.restore();
+
+  return canvas.toDataURL("image/png");
+}
+
+function handleRetake() {
+  state.capturedPhotos[state.activeSlotIndex] = null;
+  renderPreviewShell();
+}
+
+function handleReset() {
+  state.capturedPhotos = Array(CUT_COUNT).fill(null);
+  state.activeSlotIndex = 0;
+  state.stickers = [];
+  state.selectedStickerId = null;
+  state.isAutoSession = false;
+  state.frameLayout = createFrameLayout(getSelectedTheme());
+  refs.countdown.classList.remove("visible");
+  renderPreviewShell();
+}
+
+async function captureIntoSlot(slotIndex) {
+  state.activeSlotIndex = slotIndex;
+  renderPreviewShell();
+  await runCountdown();
+  state.capturedPhotos[slotIndex] = captureCurrentFrame();
+}
+
+async function handleCapture() {
+  if (!state.stream || state.isCountingDown || state.isAutoSession) {
+    return;
+  }
+
+  try {
+    await captureIntoSlot(state.activeSlotIndex);
+    const nextEmptySlot = getNextEmptySlot(state.activeSlotIndex + 1);
+    if (nextEmptySlot !== -1) {
+      state.activeSlotIndex = nextEmptySlot;
+    }
+    renderPreviewShell();
+  } catch (error) {
+    console.error(error);
+    state.isCountingDown = false;
+    renderPreviewShell();
+    alert("사진을 촬영하지 못했어요. 카메라 연결 상태를 다시 확인해 주세요.");
+  }
+}
+
+function getAutoSessionTargets() {
+  if (!state.capturedPhotos[state.activeSlotIndex]) {
+    return Array.from({ length: CUT_COUNT - state.activeSlotIndex }, (_, index) => index + state.activeSlotIndex)
+      .filter((index) => !state.capturedPhotos[index]);
+  }
+
+  const nextEmpty = getNextEmptySlot(state.activeSlotIndex + 1);
+  if (nextEmpty === -1) {
+    return [];
+  }
+
+  return Array.from({ length: CUT_COUNT - nextEmpty }, (_, index) => index + nextEmpty)
+    .filter((index) => !state.capturedPhotos[index]);
+}
+
+async function handleAutoCapture() {
+  if (!state.stream || state.isCountingDown || state.isAutoSession) {
+    return;
+  }
+
+  const targets = getAutoSessionTargets();
+  if (!targets.length) {
+    alert("연속 촬영할 빈 컷이 없어요. 다시 찍을 칸을 선택하거나 전체 초기화를 해 주세요.");
+    return;
+  }
+
+  state.isAutoSession = true;
+  renderPreviewShell();
+
+  try {
+    for (let index = 0; index < targets.length; index += 1) {
+      await captureIntoSlot(targets[index]);
+      renderPreviewShell();
+
+      if (index < targets.length - 1) {
+        await wait(AUTO_SHOT_GAP_MS);
+      }
+    }
+
+    const nextEmptySlot = getNextEmptySlot();
+    if (nextEmptySlot !== -1) {
+      state.activeSlotIndex = nextEmptySlot;
+    }
+  } catch (error) {
+    console.error(error);
+    alert("연속 촬영을 완료하지 못했어요. 카메라 연결 상태를 다시 확인해 주세요.");
+  } finally {
+    state.isAutoSession = false;
+    state.isCountingDown = false;
+    refs.countdown.classList.remove("visible");
+    renderPreviewShell();
+  }
+}
+
+function addStickerToCanvas(asset) {
+  const sticker = {
+    id: `sticker-${state.nextStickerId}`,
+    label: asset.label,
+    dataUrl: asset.dataUrl,
+    x: 0.5,
+    y: 0.5,
+    scale: 1,
+    rotation: 0,
+    mirrored: false,
+  };
+
+  state.nextStickerId += 1;
+  state.stickers.push(sticker);
+  state.selectedStickerId = sticker.id;
+  renderStickerLayer();
+  renderStickerControls();
+}
+
+function startStickerDrag(event, stickerId) {
+  const sticker = state.stickers.find((item) => item.id === stickerId);
+  if (!sticker) {
+    return;
+  }
+
+  state.selectedStickerId = stickerId;
+  renderStickerControls();
+
+  const stageRect = refs.stripInner.getBoundingClientRect();
+  const pointerX = (event.clientX - stageRect.left) / stageRect.width;
+  const pointerY = (event.clientY - stageRect.top) / stageRect.height;
+  const offsetX = sticker.x - pointerX;
+  const offsetY = sticker.y - pointerY;
+
+  function updatePosition(moveEvent) {
+    const nextX = (moveEvent.clientX - stageRect.left) / stageRect.width + offsetX;
+    const nextY = (moveEvent.clientY - stageRect.top) / stageRect.height + offsetY;
+    sticker.x = clamp(nextX, 0.06, 0.94);
+    sticker.y = clamp(nextY, 0.04, 0.96);
+    renderStickerLayer();
+  }
+
+  function stopDragging() {
+    window.removeEventListener("pointermove", updatePosition);
+    window.removeEventListener("pointerup", stopDragging);
+    window.removeEventListener("pointercancel", stopDragging);
+  }
+
+  window.addEventListener("pointermove", updatePosition);
+  window.addEventListener("pointerup", stopDragging);
+  window.addEventListener("pointercancel", stopDragging);
+}
+
+function updateSelectedStickerScale(value) {
+  const sticker = getSelectedSticker();
+  if (!sticker) {
+    return;
+  }
+
+  sticker.scale = Number(value);
+  renderStickerLayer();
+}
+
+function updateSelectedStickerRotation(value) {
+  const sticker = getSelectedSticker();
+  if (!sticker) {
+    return;
+  }
+
+  sticker.rotation = Number(value);
+  renderStickerLayer();
+}
+
+function toggleSelectedStickerMirror() {
+  const sticker = getSelectedSticker();
+  if (!sticker) {
+    return;
+  }
+
+  sticker.mirrored = !sticker.mirrored;
+  renderStickerLayer();
+  renderStickerControls();
+}
+
+function deleteSelectedSticker() {
+  if (!state.selectedStickerId) {
+    return;
+  }
+
+  state.stickers = state.stickers.filter((sticker) => sticker.id !== state.selectedStickerId);
+  state.selectedStickerId = null;
+  renderStickerLayer();
+  renderStickerControls();
+}
+
+function saveStripRecord(item) {
+  state.savedStrips = [item, ...state.savedStrips].slice(0, 8);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.savedStrips));
+  renderSavedGallery();
+}
+
+function drawRoundedRect(context, x, y, width, height, radius) {
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.lineTo(x + width - radius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + radius);
+  context.lineTo(x + width, y + height - radius);
+  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  context.lineTo(x + radius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - radius);
+  context.lineTo(x, y + radius);
+  context.quadraticCurveTo(x, y, x + radius, y);
+  context.closePath();
+}
+
+function drawWindowLights(context, x, y) {
+  [
+    { color: "rgba(235,240,255,0.7)", offset: 0 },
+    { color: "#f2b6dc", offset: 14 },
+    { color: "rgba(235,240,255,0.28)", offset: 28 },
+  ].forEach((item) => {
+    context.fillStyle = item.color;
+    context.fillRect(x + item.offset, y, 3, 3);
+  });
+}
+
+function seededUnit(seed, index) {
+  const value = Math.sin(seed * 91.73 + (index + 1) * 12.9898) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+function drawSavedStarField(context, theme, width, height, count = 280) {
+  context.save();
+  context.globalCompositeOperation = "screen";
+
+  for (let index = 0; index < count; index += 1) {
+    const x = seededUnit(theme.seed, index * 4) * width;
+    const y = seededUnit(theme.seed, index * 4 + 1) * height;
+    const sizeSeed = seededUnit(theme.seed, index * 4 + 2);
+    const alpha = 0.16 + seededUnit(theme.seed, index * 4 + 3) * 0.68;
+    const size = sizeSeed > 0.94 ? 2.8 + sizeSeed * 3 : 0.45 + sizeSeed * 1.25;
+
+    context.save();
+    context.translate(x, y);
+    context.globalAlpha = alpha;
+    context.fillStyle = sizeSeed > 0.62 ? theme.palette.accentSoft : "#ffffff";
+    context.shadowColor = theme.palette.accentSoft;
+    context.shadowBlur = sizeSeed > 0.94 ? 12 : 3;
+    context.beginPath();
+    context.arc(0, 0, Math.max(0.45, size * 0.34), 0, Math.PI * 2);
+    context.fill();
+
+    if (sizeSeed > 0.94) {
+      context.strokeStyle = "#ffffff";
+      context.lineWidth = 0.7;
+      context.beginPath();
+      context.moveTo(-size * 2.2, 0);
+      context.lineTo(size * 2.2, 0);
+      context.moveTo(0, -size * 2.2);
+      context.lineTo(0, size * 2.2);
+      context.stroke();
+    }
+    context.restore();
+  }
+
+  context.restore();
+}
+
+function drawSavedNebula(context, theme, width, height) {
+  const clouds = [
+    { x: 0.08, y: 0.2, radius: 0.54, color: theme.palette.accentSoft, alpha: 0.32 },
+    { x: 0.88, y: 0.42, radius: 0.5, color: theme.palette.accent, alpha: 0.3 },
+    { x: 0.18, y: 0.72, radius: 0.58, color: "#d5a2f3", alpha: 0.3 },
+    { x: 0.8, y: 0.9, radius: 0.48, color: "#ffafd6", alpha: 0.26 },
+  ];
+
+  context.save();
+  context.globalCompositeOperation = "screen";
+  clouds.forEach((cloud) => {
+    const x = cloud.x * width;
+    const y = cloud.y * height;
+    const radius = width * cloud.radius;
+    const glow = context.createRadialGradient(x, y, 0, x, y, radius);
+    glow.addColorStop(0, withAlpha(cloud.color, cloud.alpha));
+    glow.addColorStop(0.42, withAlpha(cloud.color, cloud.alpha * 0.45));
+    glow.addColorStop(1, withAlpha(cloud.color, 0));
+    context.fillStyle = glow;
+    context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+  });
+  context.restore();
+}
+
+function drawSavedStarlightHorizon(context, theme, width, height) {
+  const horizonY = height * 0.88;
+  const glow = context.createRadialGradient(width / 2, horizonY, 0, width / 2, horizonY, width * 0.72);
+  glow.addColorStop(0, withAlpha(theme.palette.accentSoft, 0.46));
+  glow.addColorStop(0.28, withAlpha(theme.palette.accent, 0.22));
+  glow.addColorStop(1, withAlpha(theme.palette.accent, 0));
+  context.fillStyle = glow;
+  context.fillRect(0, horizonY - width * 0.72, width, width * 1.44);
+
+  context.save();
+  context.strokeStyle = withAlpha(theme.palette.accentSoft, 0.38);
+  context.lineWidth = 1;
+  for (let index = 0; index < 5; index += 1) {
+    context.beginPath();
+    context.ellipse(width / 2, horizonY + index * 15, width * (0.36 + index * 0.08), 18 + index * 8, 0, Math.PI, Math.PI * 2);
+    context.stroke();
+  }
+  context.restore();
+}
+
+function drawSavedGalaxy(context, theme, centerX, centerY, radius, seed) {
+  context.save();
+  context.globalCompositeOperation = "screen";
+
+  for (let arm = 0; arm < 4; arm += 1) {
+    for (let index = 0; index < 120; index += 1) {
+      const progress = index / 119;
+      const angle = progress * Math.PI * 3.8 + arm * (Math.PI / 2);
+      const distance = radius * progress;
+      const jitter = (seededUnit(seed, arm * 200 + index) - 0.5) * radius * 0.1;
+      const x = centerX + Math.cos(angle) * (distance + jitter);
+      const y = centerY + Math.sin(angle) * (distance * 0.36 + jitter * 0.25);
+      const size = 0.7 + (1 - progress) * 2.2;
+
+      context.globalAlpha = 0.18 + (1 - progress) * 0.44;
+      context.fillStyle = arm % 2 === 0 ? theme.palette.accentSoft : theme.palette.accent;
+      context.beginPath();
+      context.arc(x, y, size, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+
+  const core = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 0.28);
+  core.addColorStop(0, "rgba(255,255,255,0.92)");
+  core.addColorStop(0.25, withAlpha(theme.palette.accentSoft, 0.58));
+  core.addColorStop(1, withAlpha(theme.palette.accent, 0));
+  context.globalAlpha = 1;
+  context.fillStyle = core;
+  context.fillRect(centerX - radius, centerY - radius, radius * 2, radius * 2);
+  context.restore();
+}
+
+function drawStripBackground(context, theme, width, height) {
+  const background = context.createLinearGradient(0, 0, 0, height);
+  background.addColorStop(0, theme.palette.bgA);
+  background.addColorStop(0.55, theme.palette.bgB);
+  background.addColorStop(1, theme.palette.bgC);
+  context.fillStyle = background;
+  context.fillRect(0, 0, width, height);
+
+  if (theme.id === "aurora") {
+    [0.08, 0.29, 0.52, 0.73, 0.94].forEach((baseX, index) => {
+      drawAuroraBand(
+        context,
+        {
+          baseX,
+          width: 0.17,
+          amplitude: 0.07 + (index % 2) * 0.025,
+          frequency: 0.84 + index * 0.08,
+          speed: 0.28,
+          phase: index * 0.82,
+          opacity: 0.24,
+          colorA: index % 2 ? "#ffc0e1" : "#ff97cd",
+          colorB: "#c89cf4",
+        },
+        width,
+        height,
+        0,
+      );
+    });
+  } else if (theme.id === "starlight") {
+    drawSavedStarlightHorizon(context, theme, width, height);
+  } else if (theme.id === "nebula") {
+    drawSavedNebula(context, theme, width, height);
+  } else if (theme.id === "astral") {
+    drawSavedNebula(context, theme, width, height);
+    drawSavedGalaxy(context, theme, width * 0.74, height * 0.12, width * 0.25, theme.seed);
+    drawSavedGalaxy(context, theme, width * 0.24, height * 0.82, width * 0.28, theme.seed + 8);
+  }
+
+  drawSavedStarField(context, theme, width, height);
+}
+
+function drawBackdropStars(context, layout) {
+  layout.stars.forEach((star) => {
+    const x = star.x;
+    const y = star.y;
+    const size = star.size;
+    context.save();
+    context.translate(x, y);
+    context.globalAlpha = star.opacity;
+    context.strokeStyle = star.color;
+    context.lineWidth = Math.max(1, size * 0.1);
+    context.lineCap = "round";
+    context.beginPath();
+    context.moveTo(-size * 0.5, 0);
+    context.lineTo(size * 0.5, 0);
+    context.moveTo(0, -size * 0.5);
+    context.lineTo(0, size * 0.5);
+    context.stroke();
+    context.restore();
+  });
+}
+
+function drawFrameLayout(context, theme, shellX, shellY, shellWidth, shellHeight, contentTop, contentBottom) {
+  const layout = ensureFrameLayout();
+  const layoutScale = shellWidth / 430;
+
+  layout.filaments.forEach((filament) => {
+    const x = shellX + filament.x * shellWidth;
+    const y = shellY + filament.y * shellHeight;
+    context.save();
+    context.translate(x, y);
+    context.rotate((filament.angle * Math.PI) / 180);
+    context.globalAlpha = filament.opacity;
+    const filamentWidth = filament.width * layoutScale;
+    const gradient = context.createLinearGradient(0, 0, filamentWidth, 0);
+    gradient.addColorStop(0, "rgba(255,255,255,0)");
+    gradient.addColorStop(0.48, withAlpha(theme.palette.accent, 0.6));
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    context.strokeStyle = gradient;
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(0, 0);
+    context.lineTo(filamentWidth, 0);
+    context.stroke();
+    context.restore();
+  });
+
+  layout.crosses.forEach((cross) => {
+    const x = shellX + cross.x * shellWidth;
+    const y = shellY + cross.y * shellHeight;
+    context.save();
+    context.globalAlpha = cross.opacity;
+    context.strokeStyle = theme.palette.border;
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(x - (cross.size * layoutScale) / 2, y);
+    context.lineTo(x + (cross.size * layoutScale) / 2, y);
+    context.moveTo(x, y - (cross.size * layoutScale) / 2);
+    context.lineTo(x, y + (cross.size * layoutScale) / 2);
+    context.stroke();
+    context.restore();
+  });
+
+  drawBackdropStars(
+    context,
+    {
+      stars: layout.stars.map((star) => ({
+        ...star,
+        x: shellX + star.x * shellWidth,
+        y: shellY + star.y * shellHeight,
+        size: star.size * layoutScale,
+      })),
+    },
+  );
+
+  context.save();
+  context.strokeStyle = withAlpha(theme.palette.border, 0.28);
+  context.lineWidth = 1;
+  context.strokeRect(shellX + 10, contentTop - 12, shellWidth - 20, contentBottom - contentTop + 24);
+  context.restore();
+}
+
+async function generateStripDataUrl() {
+  const theme = getSelectedTheme();
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  const width = 860;
+  const outerPadding = 42;
+  const shellInset = 18;
+  const topBarHeight = 126;
+  const shellHeaderGap = 18;
+  const footerHeight = 112;
+  const slotGap = 16;
+  const photoWidth = width - outerPadding * 2;
+  const photoHeight = Math.round((photoWidth * 5) / 4);
+  const slotsTop = outerPadding + topBarHeight + shellHeaderGap;
+  const height = slotsTop + photoHeight * CUT_COUNT + slotGap * (CUT_COUNT - 1) + footerHeight + outerPadding;
+  const shellX = shellInset;
+  const shellY = shellInset;
+  const shellWidth = width - shellInset * 2;
+  const shellHeight = height - shellInset * 2;
+  const footerY = height - footerHeight;
+
+  canvas.width = width;
+  canvas.height = height;
+
+  drawStripBackground(context, theme, width, height);
+
+  context.fillStyle = theme.palette.frameFill;
+  context.fillRect(shellX, shellY, shellWidth, shellHeight);
+  context.strokeStyle = withAlpha(theme.palette.border, 0.34);
+  context.lineWidth = 1;
+  context.strokeRect(shellX, shellY, shellWidth, shellHeight);
+  context.strokeRect(shellX + 10, shellY + 10, shellWidth - 20, shellHeight - 20);
+
+  drawWindowLights(context, shellX + 24, shellY + 24);
+
+  context.fillStyle = theme.palette.ink;
+  context.font = "48px Georgia, serif";
+  context.textAlign = "left";
+  context.fillText("SPECTRA", outerPadding, shellY + 70);
+  context.font = "italic 22px Georgia, serif";
+  context.fillStyle = withAlpha(theme.palette.border, 0.72);
+  context.fillText(theme.name, outerPadding, shellY + 100);
+
+  context.font = "10px 'IBM Plex Mono', monospace";
+  context.textAlign = "right";
+  context.fillStyle = withAlpha(theme.palette.border, 0.55);
+  context.fillText(theme.shellLabel, width - outerPadding, shellY + 42);
+  context.fillText("FOUR EXPOSURES / ARCHIVE 04", width - outerPadding, shellY + 62);
+  context.beginPath();
+  context.moveTo(outerPadding, shellY + topBarHeight - 10);
+  context.lineTo(width - outerPadding, shellY + topBarHeight - 10);
+  context.strokeStyle = withAlpha(theme.palette.border, 0.24);
+  context.stroke();
+
+  drawFrameLayout(
+    context,
+    theme,
+    shellX,
+    shellY,
+    shellWidth,
+    shellHeight,
+    slotsTop,
+    slotsTop + photoHeight * CUT_COUNT + slotGap * (CUT_COUNT - 1),
+  );
+
+  const loadedPhotos = await Promise.all(
+    state.capturedPhotos.map((photo) => (photo ? loadImage(photo) : Promise.resolve(null))),
+  );
+
+  loadedPhotos.forEach((image, index) => {
+    const slotY = slotsTop + index * (photoHeight + slotGap);
+
+    context.save();
+    context.beginPath();
+    context.rect(outerPadding, slotY, photoWidth, photoHeight);
+    context.clip();
+
+    if (image) {
+      context.drawImage(image, outerPadding, slotY, photoWidth, photoHeight);
+      context.fillStyle = "rgba(5, 8, 16, 0.06)";
+      context.fillRect(outerPadding, slotY, photoWidth, photoHeight);
+    } else {
+      context.fillStyle = "#2c1934";
+      context.fillRect(outerPadding, slotY, photoWidth, photoHeight);
+      context.fillStyle = withAlpha(theme.palette.ink, 0.72);
+      context.textAlign = "center";
+      context.font = "14px 'IBM Plex Mono', monospace";
+      context.fillText(`FRAME ${String(index + 1).padStart(2, "0")}`, width / 2, slotY + photoHeight / 2);
+    }
+
+    context.restore();
+
+    context.strokeStyle = withAlpha(theme.palette.border, 0.52);
+    context.lineWidth = 1;
+    context.strokeRect(outerPadding, slotY, photoWidth, photoHeight);
+    context.strokeStyle = withAlpha(theme.palette.border, 0.14);
+    context.strokeRect(outerPadding + 10, slotY + 10, photoWidth - 20, photoHeight - 20);
+
+    context.fillStyle = "rgba(4,6,11,0.72)";
+    context.fillRect(outerPadding + 14, slotY + 14, 82, 24);
+    context.strokeStyle = withAlpha(theme.palette.border, 0.32);
+    context.strokeRect(outerPadding + 14, slotY + 14, 82, 24);
+    context.fillStyle = withAlpha(theme.palette.border, 0.78);
+    context.textAlign = "left";
+    context.font = "10px 'IBM Plex Mono', monospace";
+    context.fillText(`CUT ${String(index + 1).padStart(2, "0")}`, outerPadding + 24, slotY + 30);
+
+    context.save();
+    context.translate(outerPadding + 22, slotY + photoHeight - 22);
+    context.strokeStyle = withAlpha(theme.palette.accentSoft, 0.72);
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(-8, 0);
+    context.lineTo(8, 0);
+    context.moveTo(0, -8);
+    context.lineTo(0, 8);
+    context.stroke();
+    context.restore();
+  });
+
+  const stageWidth = shellWidth;
+  const stageHeight = shellHeight;
+  const loadedStickers = await Promise.all(
+    state.stickers.map((sticker) => loadImage(sticker.dataUrl).then((image) => ({ image, sticker }))),
+  );
+
+  loadedStickers.forEach(({ image, sticker }) => {
+    const size = stageWidth * STICKER_BASE_WIDTH_RATIO * sticker.scale;
+    const x = shellX + sticker.x * stageWidth;
+    const y = shellY + sticker.y * stageHeight;
+
+    context.save();
+    context.translate(x, y);
+    context.rotate((sticker.rotation * Math.PI) / 180);
+    context.scale(sticker.mirrored ? -1 : 1, 1);
+    context.drawImage(image, -size / 2, -size / 2, size, size);
+    context.restore();
+  });
+
+  context.fillStyle = theme.palette.ink;
+  context.font = "10px 'IBM Plex Mono', monospace";
+  context.textAlign = "left";
+  context.fillText("CELESTIAL IMAGE ARCHIVE", outerPadding, footerY + 42);
+  context.fillText(theme.tagLine, outerPadding, footerY + 58);
+  context.textAlign = "right";
+  context.fillText(formatTimestamp(), width - outerPadding, footerY + 58);
+
+  return canvas.toDataURL("image/png");
+}
+
+function downloadDataUrl(dataUrl, fileName) {
+  const link = document.createElement("a");
+  link.href = dataUrl;
+  link.download = fileName;
+  link.rel = "noopener";
+  link.click();
+}
+
+async function handleSave() {
+  if (getFilledCount() !== CUT_COUNT) {
+    return;
+  }
+
+  try {
+    const dataUrl = await generateStripDataUrl();
+    const theme = getSelectedTheme();
+    const savedAt = formatTimestamp();
+    const fileName = `spectra-${theme.id}-${Date.now()}.png`;
+
+    downloadDataUrl(dataUrl, fileName);
+
+    saveStripRecord({
+      dataUrl,
+      themeName: theme.name,
+      savedAt,
+      fileName,
+    });
+  } catch (error) {
+    console.error(error);
+    alert("이미지를 저장하지 못했어요. 다시 시도해 주세요.");
+  }
+}
+
+function restoreSavedStrips() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return;
+    }
+
+    const parsed = JSON.parse(raw);
+    state.savedStrips = Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error(error);
+    state.savedStrips = [];
+  }
+}
+
+function bindEvents() {
+  refs.musicToggleButton.addEventListener("click", toggleBackgroundMusic);
+  refs.startCameraButton.addEventListener("click", startCamera);
+  refs.captureButton.addEventListener("click", handleCapture);
+  refs.autoCaptureButton.addEventListener("click", handleAutoCapture);
+  refs.retakeButton.addEventListener("click", handleRetake);
+  refs.resetButton.addEventListener("click", handleReset);
+  refs.saveButton.addEventListener("click", handleSave);
+  refs.clearStickersButton.addEventListener("click", () => {
+    state.stickers = [];
+    state.selectedStickerId = null;
+    renderStickerLayer();
+    renderStickerControls();
+  });
+  refs.stickerScaleInput.addEventListener("input", (event) => {
+    updateSelectedStickerScale(event.target.value);
+  });
+  refs.stickerRotationInput.addEventListener("input", (event) => {
+    updateSelectedStickerRotation(event.target.value);
+  });
+  refs.stickerFlipButton.addEventListener("click", toggleSelectedStickerMirror);
+  refs.deleteStickerButton.addEventListener("click", deleteSelectedSticker);
+  refs.stripInner.addEventListener("click", (event) => {
+    if (event.target === refs.stripInner || event.target === refs.stickerLayer) {
+      state.selectedStickerId = null;
+      renderStickerLayer();
+      renderStickerControls();
+    }
+  });
+
+  window.addEventListener("beforeunload", () => {
+    stopCamera();
+    refs.backgroundMusic.pause();
+    removeMusicUnlockListeners();
+    window.removeEventListener("resize", resizeBackdropCanvas);
+
+    if (state.backgroundVideoMonitor) {
+      window.clearInterval(state.backgroundVideoMonitor);
+    }
+
+    if (state.backgroundVideoTransitionTimer) {
+      window.clearTimeout(state.backgroundVideoTransitionTimer);
+    }
+
+    if (state.backdropAnimationFrame) {
+      window.cancelAnimationFrame(state.backdropAnimationFrame);
+    }
+  });
+}
+
+function init() {
+  restoreSavedStrips();
+  state.frameLayout = createFrameLayout(getSelectedTheme());
+  initializeBackgroundVideo();
+  initializeBackgroundMusic();
+  initializeBackdrop();
+  bindEvents();
+  renderAll();
+}
+
+init();

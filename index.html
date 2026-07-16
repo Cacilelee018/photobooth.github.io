@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPECTRA PHOTOBOOTH</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="cosmic-video-bg" aria-hidden="true">
+      <video
+        class="cosmic-background-video is-visible"
+        id="cosmicBackgroundVideoA"
+        autoplay
+        muted
+        playsinline
+        preload="auto"
+        poster="./assets/background/aurora-fallback.png"
+      >
+        <source src="./assets/background/milky-way-primary.mp4" type="video/mp4" />
+        <source src="./assets/background/milky-way-secondary.mp4" type="video/mp4" />
+      </video>
+      <video
+        class="cosmic-background-video"
+        id="cosmicBackgroundVideoB"
+        muted
+        playsinline
+        preload="auto"
+        poster="./assets/background/aurora-fallback.png"
+      >
+        <source src="./assets/background/milky-way-primary.mp4" type="video/mp4" />
+        <source src="./assets/background/milky-way-secondary.mp4" type="video/mp4" />
+      </video>
+      <div class="cosmic-video-grade"></div>
+    </div>
+    <canvas class="galaxy-video-bg" id="galaxyBackground" aria-hidden="true"></canvas>
+    <div class="background-grid"></div>
+
+    <audio id="backgroundMusic" autoplay loop preload="auto">
+      <source src="./assets/audio/fantasy-universe-night-forest.mp3" type="audio/mpeg" />
+    </audio>
+    <button
+      class="music-toggle is-waiting"
+      id="musicToggleButton"
+      type="button"
+      aria-label="배경음악 켜기"
+      aria-pressed="false"
+      title="화면을 터치하면 배경음악이 재생됩니다"
+    >
+      <span class="music-icon" aria-hidden="true">♪</span>
+      <span class="music-indicator" aria-hidden="true"></span>
+    </button>
+
+    <main class="app-shell">
+      <section class="hero-panel glass-panel">
+        <div class="window-bar">
+          <span class="window-title">CELESTIAL IMAGE ARCHIVE / STUDY 04</span>
+          <span class="window-lights"><i></i><i></i><i></i></span>
+        </div>
+        <div class="hero-copy">
+          <p class="eyebrow">FOUR EXPOSURES · ONE CELESTIAL PORTRAIT</p>
+          <h1><span>SPECTRA</span><em>photo booth</em></h1>
+          <p>
+          네 번의 순간을 우주 감성으로 담아냅니다.
+   <br />태양계와 우주를 모티브로 한 캐릭터 오브젝트를 더해 PNG로 저장해 보세요.</p>
+          <div class="hero-feature-row">
+            <span>04 EXPOSURES</span>
+            <span>CELESTIAL FRAMES</span>
+            <span>PNG ARCHIVE</span>
+          </div>
+        </div>
+
+        <div class="hero-side">
+          <div class="celestial-poster" aria-hidden="true">
+            <div class="poster-meta"><span>GEMINGA</span><span>PSR J0633+1746</span></div>
+            <div class="poster-star"><i></i></div>
+            <div class="poster-orbit poster-orbit-a"></div>
+            <div class="poster-orbit poster-orbit-b"></div>
+            <div class="poster-crosshair"></div>
+            <div class="poster-title"><strong>PULSAR</strong><small>THE LIGHT REMAINS</small></div>
+          </div>
+          <div class="hero-index">
+            <span>RA 06h 33m 54s</span>
+            <span>DEC +17° 46′ 12″</span>
+            <span>FRAME SERIES / 001—004</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <div class="studio-column">
+          <article class="glass-panel live-panel">
+            <div class="window-bar">
+              <span class="window-title">CAPTURE / LIVE SENSOR</span>
+              <span class="window-lights"><i></i><i></i><i></i></span>
+            </div>
+            <div class="section-heading">
+              <div>
+                <p class="section-label">CAPTURE</p>
+                <h2>사진 촬영</h2>
+              </div>
+              <div class="status-pill" id="cameraStatus">카메라 대기 중</div>
+            </div>
+
+            <div class="session-strip" id="sessionStrip" aria-label="촬영 진행 상태"></div>
+
+            <div class="camera-stage" id="cameraStage">
+              <video id="camera" autoplay playsinline muted></video>
+              <div class="camera-overlay">
+                <div class="overlay-badge">REC / SPECTRA</div>
+                <div class="overlay-corner overlay-corner-top"></div>
+                <div class="overlay-corner overlay-corner-bottom"></div>
+                <div class="camera-hud">
+                  <span class="hud-chip" id="boothModeLabel">MANUAL MODE</span>
+                  <span class="hud-chip" id="currentSlotLabel">CUT 01</span>
+                </div>
+                <div class="countdown" id="countdown">3</div>
+              </div>
+              <div class="camera-empty" id="cameraEmpty">
+                <p>카메라를 켜면 여기에서 바로 4컷을 촬영할 수 있어요.</p>
+                <small>브라우저에서 카메라 권한을 허용해 주세요.</small>
+              </div>
+            </div>
+
+            <div class="controls">
+              <button class="action-button chrome" id="startCameraButton" type="button">
+                카메라 시작
+              </button>
+              <button class="action-button hotpink" id="captureButton" type="button" disabled>
+                1컷 촬영
+              </button>
+              <button class="action-button violet" id="autoCaptureButton" type="button" disabled>
+                4컷 연속 촬영
+              </button>
+              <button class="action-button aqua" id="retakeButton" type="button" disabled>
+                현재 컷 다시찍기
+              </button>
+              <button class="action-button clear" id="resetButton" type="button">
+                전체 초기화
+              </button>
+              <button class="action-button lime" id="saveButton" type="button" disabled>
+                PNG 저장
+              </button>
+            </div>
+
+            <div class="shooting-note">
+              <p id="sessionMessage">4칸이 모두 채워지면 저장 버튼이 활성화돼요.</p>
+              <small>카메라는 보통 `localhost` 또는 HTTPS 환경에서 정상 동작합니다.</small>
+            </div>
+          </article>
+
+          <article class="glass-panel settings-panel">
+            <div class="window-bar">
+              <span class="window-title">COMPOSE / FRAME & OBJECT</span>
+              <span class="window-lights"><i></i><i></i><i></i></span>
+            </div>
+            <div class="section-heading">
+              <div>
+                <p class="section-label">COMPOSE</p>
+                <h2>프레임과 오브젝트</h2>
+              </div>
+              <div class="status-pill" id="slotStatus">0 / 4 컷 완료</div>
+            </div>
+
+            <div class="settings-grid">
+              <section class="settings-block">
+                <div class="settings-header">
+                  <h3>프레임 테마</h3>
+                  <span id="themeSummary">Aurora Veil</span>
+                </div>
+                <div class="theme-options" id="themeOptions"></div>
+              </section>
+
+              <section class="settings-block">
+                <div class="settings-header">
+                  <h3>스펙트럴 오브젝트</h3>
+                  <span>클릭해서 추가해주세요</span>
+                </div>
+                <div class="sticker-options" id="stickerOptions"></div>
+                <div class="asset-upload-row">
+                  <button class="mini-button" id="clearStickersButton" type="button">스티커 전체 삭제</button>
+                </div>
+              </section>
+
+              <section class="settings-block sticker-control-block">
+                <div class="settings-header">
+                  <h3>선택한 스티커 조정</h3>
+                  <span id="selectedStickerLabel">선택 없음</span>
+                </div>
+                <div class="sticker-controls">
+                  <label>
+                    크기
+                    <input id="stickerScaleInput" type="range" min="0.45" max="2.6" step="0.05" value="1" />
+                  </label>
+                  <label>
+                    회전
+                    <input id="stickerRotationInput" type="range" min="-60" max="60" step="1" value="0" />
+                  </label>
+                </div>
+                <div class="sticker-toggle-row">
+                  <button class="mini-button" id="stickerFlipButton" type="button">좌우 반전</button>
+                </div>
+                <p class="helper-text compact">스티커는 미리보기 위에서 직접 드래그해서 이동할 수 있어요.</p>
+                <button class="mini-button danger" id="deleteStickerButton" type="button">
+                  선택한 스티커 삭제
+                </button>
+              </section>
+            </div>
+          </article>
+        </div>
+
+        <div class="preview-column">
+          <article class="glass-panel strip-panel">
+            <div class="window-bar">
+              <span class="window-title">OUTPUT / FOUR EXPOSURES</span>
+              <span class="window-lights"><i></i><i></i><i></i></span>
+            </div>
+            <div class="section-heading">
+              <div>
+                <p class="section-label">OUTPUT</p>
+                <h2>4컷 프레임 미리보기</h2>
+              </div>
+              <div class="status-pill" id="frameStatus">기본 프레임 사용 중</div>
+            </div>
+
+            <div class="preview-note">
+              <span>컷을 선택해 다시 촬영하거나 오브젝트를 드래그해 프레임 위에 배치할 수 있습니다.</span>
+            </div>
+
+            <div class="strip-preview theme-aurora" id="stripPreview">
+              <div class="strip-inner" id="stripInner">
+                <div class="strip-shine"></div>
+                <div class="strip-cosmos" id="stripCosmos" aria-hidden="true"></div>
+                <div class="strip-topper">
+                  <span id="stripThemeName">Aurora Veil</span>
+                  <span>PSR / SERIES 04</span>
+                </div>
+
+                <div class="strip-slots" id="stripSlots"></div>
+
+                <div class="sticker-layer" id="stickerLayer"></div>
+
+                <div class="strip-footer">
+                  <span>CELESTIAL IMAGE ARCHIVE</span>
+                  <span id="footerTimestamp">READY TO SHOOT</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="glass-panel gallery-panel">
+            <div class="window-bar">
+              <span class="window-title">ARCHIVE / RECENT OUTPUTS</span>
+              <span class="window-lights"><i></i><i></i><i></i></span>
+            </div>
+            <div class="section-heading">
+              <div>
+                <p class="section-label">ARCHIVE</p>
+                <h2>최근 저장한 이미지</h2>
+              </div>
+            </div>
+            <div class="saved-gallery" id="savedGallery">
+              <div class="empty-gallery">
+                <p>아직 저장된 포토 스트립이 없어요.</p>
+                <small>4컷을 완성하고 저장하면 여기에 쌓여요.</small>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <footer class="site-credit">음원 출처 : 전주정보문화산업진흥원, Fantasy_Universe_mysterious_Night_Forest_5.1</footer>
+    </main>
+
+    <template id="themeButtonTemplate">
+      <button class="theme-card" type="button">
+        <div class="theme-card-preview"></div>
+        <strong></strong>
+        <span></span>
+      </button>
+    </template>
+
+    <template id="stickerButtonTemplate">
+      <button class="sticker-card" type="button">
+        <div class="sticker-thumb"></div>
+        <strong></strong>
+      </button>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
