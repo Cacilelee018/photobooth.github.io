@@ -24,8 +24,14 @@ const PERSON_SEGMENTATION_MODEL = new URL(
   "./assets/models/selfie-multiclass-256x256.tflite",
   document.baseURI,
 ).href;
+const PERSON_SEGMENTATION_FALLBACK_MODEL = new URL(
+  "./assets/models/selfie-segmenter.tflite",
+  document.baseURI,
+).href;
 const PERSON_MASK_SOFT_EDGE_START = 0.18;
 const PERSON_MASK_SOFT_EDGE_END = 0.72;
+const PERSON_MASK_MIN_VISIBLE_RATIO = 0.01;
+const PERSON_MASK_MIN_PEAK_CONFIDENCE = 0.3;
 const CAMERA_PERMISSION_TIMEOUT_MS = 15000;
 
 const portraitBackgrounds = [
@@ -249,6 +255,9 @@ const state = {
   selectedPortraitBackgroundId: portraitBackgrounds[0].id,
   portraitSegmenter: null,
   portraitSegmenterPromise: null,
+  portraitVisionRuntimePromise: null,
+  portraitCpuFallbackPromise: null,
+  portraitSegmenterDelegate: null,
   portraitSegmenterCanvas: null,
   portraitSegmentationState: "idle",
   isPhotoProcessing: false,
@@ -434,10 +443,69 @@ function renderPortraitBackgroundOptions() {
   });
 }
 
+async function getPortraitVisionRuntime() {
+  if (!state.portraitVisionRuntimePromise) {
+    state.portraitVisionRuntimePromise = (async () => {
+      const { FilesetResolver, ImageSegmenter } = await import(MEDIAPIPE_VISION_MODULE);
+      const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_PATH);
+      return { ImageSegmenter, vision };
+    })().catch((error) => {
+      state.portraitVisionRuntimePromise = null;
+      throw error;
+    });
+  }
+
+  return state.portraitVisionRuntimePromise;
+}
+
+async function createPortraitSegmenter(delegate, modelAssetPath = PERSON_SEGMENTATION_MODEL) {
+  const { ImageSegmenter, vision } = await getPortraitVisionRuntime();
+  const options = {
+    runningMode: "IMAGE",
+    outputCategoryMask: false,
+    outputConfidenceMasks: true,
+    baseOptions: {
+      modelAssetPath,
+      delegate,
+    },
+  };
+
+  if (delegate === "GPU") {
+    const gpuCanvas = document.createElement("canvas");
+    gpuCanvas.width = 1;
+    gpuCanvas.height = 1;
+    const segmenter = await ImageSegmenter.createFromOptions(vision, {
+      ...options,
+      canvas: gpuCanvas,
+    });
+    return { segmenter, canvas: gpuCanvas };
+  }
+
+  const segmenter = await ImageSegmenter.createFromOptions(vision, options);
+  return { segmenter, canvas: null };
+}
+
+function installPortraitSegmenter(created, delegate) {
+  const previousSegmenter = state.portraitSegmenter;
+  state.portraitSegmenter = created.segmenter;
+  state.portraitSegmenterCanvas = created.canvas;
+  state.portraitSegmenterDelegate = delegate;
+
+  if (previousSegmenter && previousSegmenter !== created.segmenter) {
+    previousSegmenter.close?.();
+  }
+
+  return created.segmenter;
+}
+
 async function ensurePortraitSegmenter() {
   if (state.portraitSegmenter) {
     if (state.portraitBackgroundEnabled) {
-      setPortraitSegmentationState("ready", "자동 누끼 준비 완료");
+      const modeLabel =
+        state.portraitSegmenterDelegate === "CPU"
+          ? "호환 모드 누끼 준비 완료"
+          : "자동 누끼 준비 완료";
+      setPortraitSegmentationState("ready", modeLabel);
     }
     return state.portraitSegmenter;
   }
@@ -449,43 +517,25 @@ async function ensurePortraitSegmenter() {
   setPortraitSegmentationState("loading", "누끼 모델 불러오는 중");
 
   state.portraitSegmenterPromise = (async () => {
-    const { FilesetResolver, ImageSegmenter } = await import(MEDIAPIPE_VISION_MODULE);
-    const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_PATH);
-    const commonOptions = {
-      runningMode: "IMAGE",
-      outputCategoryMask: false,
-      outputConfidenceMasks: true,
-    };
-    let segmenter;
+    let created;
+    let delegate = "GPU";
 
     try {
-      const gpuCanvas = document.createElement("canvas");
-      gpuCanvas.width = 1;
-      gpuCanvas.height = 1;
-      segmenter = await ImageSegmenter.createFromOptions(vision, {
-        ...commonOptions,
-        canvas: gpuCanvas,
-        baseOptions: {
-          modelAssetPath: PERSON_SEGMENTATION_MODEL,
-          delegate: "GPU",
-        },
-      });
-      state.portraitSegmenterCanvas = gpuCanvas;
+      created = await createPortraitSegmenter("GPU");
     } catch (gpuError) {
       console.warn("GPU 누끼 초기화 실패, CPU로 전환합니다.", gpuError);
-      segmenter = await ImageSegmenter.createFromOptions(vision, {
-        ...commonOptions,
-        baseOptions: {
-          modelAssetPath: PERSON_SEGMENTATION_MODEL,
-          delegate: "CPU",
-        },
-      });
+      delegate = "CPU";
+      created = await createPortraitSegmenter("CPU", PERSON_SEGMENTATION_FALLBACK_MODEL);
     }
 
-    state.portraitSegmenter = segmenter;
+    const segmenter = installPortraitSegmenter(created, delegate);
     setPortraitSegmentationState(
       state.portraitBackgroundEnabled ? "ready" : "disabled",
-      state.portraitBackgroundEnabled ? "자동 누끼 준비 완료" : "원본 배경 사용 중",
+      state.portraitBackgroundEnabled
+        ? delegate === "CPU"
+          ? "호환 모드 누끼 준비 완료"
+          : "자동 누끼 준비 완료"
+        : "원본 배경 사용 중",
     );
     return segmenter;
   })().catch((error) => {
@@ -495,6 +545,27 @@ async function ensurePortraitSegmenter() {
   });
 
   return state.portraitSegmenterPromise;
+}
+
+async function ensureCpuPortraitSegmenter() {
+  if (state.portraitSegmenter && state.portraitSegmenterDelegate === "CPU") {
+    return state.portraitSegmenter;
+  }
+
+  if (!state.portraitCpuFallbackPromise) {
+    setPortraitSegmentationState("loading", "기기 호환 모드로 다시 인식 중");
+    state.portraitCpuFallbackPromise = createPortraitSegmenter(
+      "CPU",
+      PERSON_SEGMENTATION_FALLBACK_MODEL,
+    )
+      .then((created) => installPortraitSegmenter(created, "CPU"))
+      .catch((error) => {
+        state.portraitCpuFallbackPromise = null;
+        throw error;
+      });
+  }
+
+  return state.portraitCpuFallbackPromise;
 }
 
 function createNormalizedPhotoCanvas(source, sourceWidth, sourceHeight) {
@@ -563,6 +634,31 @@ function refinePersonConfidenceMask(source, width, height) {
   return refined;
 }
 
+function assertUsablePersonMask(confidence) {
+  let visiblePixels = 0;
+  let peakConfidence = 0;
+
+  for (let index = 0; index < confidence.length; index += 1) {
+    const value = confidence[index];
+    peakConfidence = Math.max(peakConfidence, value);
+    if (value >= PERSON_MASK_SOFT_EDGE_START) {
+      visiblePixels += 1;
+    }
+  }
+
+  const visibleRatio = confidence.length ? visiblePixels / confidence.length : 0;
+  if (
+    peakConfidence < PERSON_MASK_MIN_PEAK_CONFIDENCE ||
+    visibleRatio < PERSON_MASK_MIN_VISIBLE_RATIO
+  ) {
+    const error = new Error(
+      `인물 마스크가 비어 있습니다. peak=${peakConfidence.toFixed(3)}, ratio=${visibleRatio.toFixed(4)}`,
+    );
+    error.name = "InvalidPortraitMaskError";
+    throw error;
+  }
+}
+
 async function createPortraitCutout(rawPhoto, segmenter) {
   const image = await loadImage(rawPhoto);
   const photoCanvas = createNormalizedPhotoCanvas(image, image.naturalWidth, image.naturalHeight);
@@ -583,6 +679,7 @@ async function createPortraitCutout(rawPhoto, segmenter) {
       maskWidth,
       maskHeight,
     );
+    assertUsablePersonMask(confidence);
     const maskCanvas = document.createElement("canvas");
     maskCanvas.width = maskWidth;
     maskCanvas.height = maskHeight;
@@ -618,6 +715,22 @@ async function createPortraitCutout(rawPhoto, segmenter) {
   }
 }
 
+async function createReliablePortraitCutout(rawPhoto) {
+  const segmenter = await ensurePortraitSegmenter();
+
+  try {
+    return await createPortraitCutout(rawPhoto, segmenter);
+  } catch (error) {
+    if (state.portraitSegmenterDelegate !== "GPU") {
+      throw error;
+    }
+
+    console.warn("GPU 인물 분리에 실패해 CPU 호환 모드로 다시 시도합니다.", error);
+    const cpuSegmenter = await ensureCpuPortraitSegmenter();
+    return createPortraitCutout(rawPhoto, cpuSegmenter);
+  }
+}
+
 function composePortraitBackground(personCanvas, background) {
   const outputCanvas = document.createElement("canvas");
   const outputContext = outputCanvas.getContext("2d");
@@ -647,20 +760,33 @@ async function processAndStorePhoto(slotIndex, rawPhoto) {
   updateControlState();
 
   try {
-    const segmenter = await ensurePortraitSegmenter();
     setPortraitSegmentationState("processing", "인물 분리 중");
-    const personCanvas = await createPortraitCutout(rawPhoto, segmenter);
+    const personCanvas = await createReliablePortraitCutout(rawPhoto);
     state.portraitCutouts[slotIndex] = personCanvas;
     state.capturedPhotos[slotIndex] = composePortraitBackground(
       personCanvas,
       getSelectedPortraitBackground(),
     );
-    setPortraitSegmentationState("ready", "자동 누끼 준비 완료");
+    setPortraitSegmentationState(
+      "ready",
+      state.portraitSegmenterDelegate === "CPU"
+        ? "호환 모드 누끼 적용 완료"
+        : "자동 누끼 준비 완료",
+    );
   } catch (error) {
-    console.error(error);
+    if (error?.name === "InvalidPortraitMaskError") {
+      console.warn(error);
+    } else {
+      console.error(error);
+    }
     state.portraitCutouts[slotIndex] = null;
     state.capturedPhotos[slotIndex] = rawPhoto;
-    setPortraitSegmentationState("error", "누끼 실패 · 원본 유지");
+    setPortraitSegmentationState(
+      "error",
+      error?.name === "InvalidPortraitMaskError"
+        ? "인물 인식 실패 · 원본 유지"
+        : "누끼 실패 · 원본 유지",
+    );
   } finally {
     state.isPhotoProcessing = false;
     renderPortraitBackgroundOptions();
@@ -697,14 +823,11 @@ async function handlePortraitBackgroundChange(backgroundId) {
 
   try {
     const background = getSelectedPortraitBackground();
-    const missingCutoutSlots = occupiedSlots.filter((slotIndex) => !state.portraitCutouts[slotIndex]);
-    const segmenter = missingCutoutSlots.length ? await ensurePortraitSegmenter() : null;
 
     for (const slotIndex of occupiedSlots) {
       if (!state.portraitCutouts[slotIndex]) {
-        state.portraitCutouts[slotIndex] = await createPortraitCutout(
+        state.portraitCutouts[slotIndex] = await createReliablePortraitCutout(
           state.rawCapturedPhotos[slotIndex],
-          segmenter,
         );
       }
 
@@ -714,13 +837,28 @@ async function handlePortraitBackgroundChange(backgroundId) {
       );
     }
 
-    setPortraitSegmentationState("ready", "자동 누끼 준비 완료");
+    setPortraitSegmentationState(
+      "ready",
+      state.portraitSegmenterDelegate === "CPU"
+        ? "호환 모드 누끼 적용 완료"
+        : "자동 누끼 준비 완료",
+    );
   } catch (error) {
-    console.error(error);
+    if (error?.name === "InvalidPortraitMaskError") {
+      console.warn(error);
+    } else {
+      console.error(error);
+    }
     occupiedSlots.forEach((slotIndex) => {
+      state.portraitCutouts[slotIndex] = null;
       state.capturedPhotos[slotIndex] = state.rawCapturedPhotos[slotIndex];
     });
-    setPortraitSegmentationState("error", "누끼 실패 · 원본 유지");
+    setPortraitSegmentationState(
+      "error",
+      error?.name === "InvalidPortraitMaskError"
+        ? "인물 인식 실패 · 원본 유지"
+        : "누끼 실패 · 원본 유지",
+    );
   } finally {
     state.isPhotoProcessing = false;
     renderPortraitBackgroundOptions();
