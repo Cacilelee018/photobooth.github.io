@@ -244,6 +244,7 @@ const state = {
   backgroundVideoVisibilityHandler: null,
   backgroundMusicDesired: true,
   backgroundMusicUnlockHandler: null,
+  portraitBackgroundEnabled: true,
   selectedPortraitBackgroundId: portraitBackgrounds[0].id,
   portraitSegmenter: null,
   portraitSegmenterPromise: null,
@@ -280,6 +281,8 @@ const refs = {
   startCameraButton: document.getElementById("startCameraButton"),
   uploadPhotoButton: document.getElementById("uploadPhotoButton"),
   photoUploadInput: document.getElementById("photoUploadInput"),
+  portraitBackgroundToggle: document.getElementById("portraitBackgroundToggle"),
+  portraitBackgroundToggleLabel: document.getElementById("portraitBackgroundToggleLabel"),
   portraitBackgroundOptions: document.getElementById("portraitBackgroundOptions"),
   portraitSegmentationStatus: document.getElementById("portraitSegmentationStatus"),
   captureButton: document.getElementById("captureButton"),
@@ -391,6 +394,7 @@ function renderPortraitBackgroundOptions() {
   }
 
   refs.portraitBackgroundOptions.innerHTML = "";
+  refs.portraitBackgroundOptions.classList.toggle("is-disabled", !state.portraitBackgroundEnabled);
 
   portraitBackgrounds.forEach((background) => {
     const label = document.createElement("label");
@@ -402,7 +406,11 @@ function renderPortraitBackgroundOptions() {
     input.name = "portrait-background";
     input.value = background.id;
     input.checked = background.id === state.selectedPortraitBackgroundId;
-    input.disabled = state.isCountingDown || state.isAutoSession || state.isPhotoProcessing;
+    input.disabled =
+      !state.portraitBackgroundEnabled ||
+      state.isCountingDown ||
+      state.isAutoSession ||
+      state.isPhotoProcessing;
     input.addEventListener("change", () => handlePortraitBackgroundChange(background.id));
 
     const choice = document.createElement("span");
@@ -424,6 +432,9 @@ function renderPortraitBackgroundOptions() {
 
 async function ensurePortraitSegmenter() {
   if (state.portraitSegmenter) {
+    if (state.portraitBackgroundEnabled) {
+      setPortraitSegmentationState("ready", "자동 누끼 준비 완료");
+    }
     return state.portraitSegmenter;
   }
 
@@ -468,7 +479,10 @@ async function ensurePortraitSegmenter() {
     }
 
     state.portraitSegmenter = segmenter;
-    setPortraitSegmentationState("ready", "자동 누끼 준비 완료");
+    setPortraitSegmentationState(
+      state.portraitBackgroundEnabled ? "ready" : "disabled",
+      state.portraitBackgroundEnabled ? "자동 누끼 준비 완료" : "원본 배경 사용 중",
+    );
     return segmenter;
   })().catch((error) => {
     state.portraitSegmenterPromise = null;
@@ -613,6 +627,16 @@ function composePortraitBackground(personCanvas, background) {
 
 async function processAndStorePhoto(slotIndex, rawPhoto) {
   state.rawCapturedPhotos[slotIndex] = rawPhoto;
+  state.portraitCutouts[slotIndex] = null;
+
+  if (!state.portraitBackgroundEnabled) {
+    state.capturedPhotos[slotIndex] = rawPhoto;
+    setPortraitSegmentationState("disabled", "원본 배경 사용 중");
+    renderPortraitBackgroundOptions();
+    renderPreviewShell();
+    return;
+  }
+
   state.isPhotoProcessing = true;
   setPortraitSegmentationState("processing", "인물 분리 중");
   renderPortraitBackgroundOptions();
@@ -641,7 +665,12 @@ async function processAndStorePhoto(slotIndex, rawPhoto) {
 }
 
 async function handlePortraitBackgroundChange(backgroundId) {
-  if (state.isCountingDown || state.isAutoSession || state.isPhotoProcessing) {
+  if (
+    !state.portraitBackgroundEnabled ||
+    state.isCountingDown ||
+    state.isAutoSession ||
+    state.isPhotoProcessing
+  ) {
     return;
   }
 
@@ -693,6 +722,32 @@ async function handlePortraitBackgroundChange(backgroundId) {
     renderPortraitBackgroundOptions();
     renderPreviewShell();
   }
+}
+
+async function handlePortraitBackgroundToggle() {
+  if (state.isCountingDown || state.isAutoSession || state.isPhotoProcessing) {
+    refs.portraitBackgroundToggle.checked = state.portraitBackgroundEnabled;
+    return;
+  }
+
+  state.portraitBackgroundEnabled = refs.portraitBackgroundToggle.checked;
+
+  if (!state.portraitBackgroundEnabled) {
+    state.rawCapturedPhotos.forEach((rawPhoto, slotIndex) => {
+      if (rawPhoto) {
+        state.capturedPhotos[slotIndex] = rawPhoto;
+      }
+    });
+    setPortraitSegmentationState("disabled", "원본 배경 사용 중");
+    renderPortraitBackgroundOptions();
+    renderPreviewShell();
+    return;
+  }
+
+  setPortraitSegmentationState("loading", "누끼 배경 적용 중");
+  renderPortraitBackgroundOptions();
+  renderPreviewShell();
+  await handlePortraitBackgroundChange(state.selectedPortraitBackgroundId);
 }
 
 function getSelectedTheme() {
@@ -1584,8 +1639,12 @@ function updateControlState() {
   refs.startCameraButton.disabled = isBusy;
   refs.uploadPhotoButton.disabled = isBusy;
   refs.photoUploadInput.disabled = isBusy;
+  refs.portraitBackgroundToggle.disabled = isBusy;
+  refs.portraitBackgroundToggle.checked = state.portraitBackgroundEnabled;
+  refs.portraitBackgroundToggleLabel.textContent = state.portraitBackgroundEnabled ? "켜짐" : "꺼짐";
+  refs.portraitBackgroundOptions.classList.toggle("is-disabled", !state.portraitBackgroundEnabled);
   refs.portraitBackgroundOptions.querySelectorAll("input").forEach((input) => {
-    input.disabled = isBusy;
+    input.disabled = isBusy || !state.portraitBackgroundEnabled;
   });
   updateWorkflowControls();
 }
@@ -2506,6 +2565,7 @@ function bindEvents() {
   refs.startCameraButton.addEventListener("click", startCamera);
   refs.uploadPhotoButton.addEventListener("click", () => refs.photoUploadInput.click());
   refs.photoUploadInput.addEventListener("change", handlePhotoUpload);
+  refs.portraitBackgroundToggle.addEventListener("change", handlePortraitBackgroundToggle);
   refs.captureButton.addEventListener("click", handleCapture);
   refs.autoCaptureButton.addEventListener("click", handleAutoCapture);
   refs.retakeButton.addEventListener("click", handleRetake);

@@ -617,6 +617,12 @@ button {
   font-size: 0.78rem;
 }
 
+.portrait-background-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
 .portrait-background-heading small {
   color: var(--text-faint);
   font-size: 0.64rem;
@@ -630,10 +636,77 @@ button {
   color: var(--danger);
 }
 
+.portrait-background-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 0.64rem;
+}
+
+.portrait-background-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.portrait-toggle-track {
+  position: relative;
+  width: 38px;
+  height: 20px;
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(69, 42, 77, 0.62);
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.portrait-toggle-track i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  display: block;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.portrait-background-toggle input:checked + .portrait-toggle-track {
+  border-color: rgba(255, 218, 243, 0.82);
+  background: rgba(202, 113, 173, 0.58);
+}
+
+.portrait-background-toggle input:checked + .portrait-toggle-track i {
+  transform: translateX(18px);
+  background: var(--text);
+  box-shadow: 0 0 12px rgba(255, 177, 224, 0.72);
+}
+
+.portrait-background-toggle input:focus-visible + .portrait-toggle-track {
+  outline: 1px solid rgba(255, 234, 249, 0.94);
+  outline-offset: 2px;
+}
+
+.portrait-background-toggle:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .portrait-background-options {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+  transition: opacity 160ms ease;
+}
+
+.portrait-background-options.is-disabled {
+  opacity: 0.36;
 }
 
 .portrait-background-option {
@@ -2053,5 +2126,9 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 
   .portrait-background-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portrait-background-heading {
+    align-items: flex-start;
   }
 }

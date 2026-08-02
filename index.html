@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0" />
     <title>SPECTRA PHOTOBOOTH</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260802-1702" />
+    <link rel="stylesheet" href="./styles.css?v=20260802-1750" />
   </head>
   <body>
     <div class="cosmic-video-bg" aria-hidden="true">
@@ -163,8 +163,20 @@
 
                 <div class="portrait-background-panel">
                   <div class="portrait-background-heading">
-                    <span>인물 배경</span>
-                    <small id="portraitSegmentationStatus">자동 누끼 준비 중</small>
+                    <div class="portrait-background-copy">
+                      <span>인물 배경</span>
+                      <small id="portraitSegmentationStatus">자동 누끼 준비 중</small>
+                    </div>
+                    <label class="portrait-background-toggle">
+                      <input
+                        id="portraitBackgroundToggle"
+                        type="checkbox"
+                        aria-label="누끼와 단색 배경 사용"
+                        checked
+                      />
+                      <span class="portrait-toggle-track" aria-hidden="true"><i></i></span>
+                      <em id="portraitBackgroundToggleLabel">켜짐</em>
+                    </label>
                   </div>
                   <div
                     class="portrait-background-options"
@@ -358,6 +370,6 @@
       </button>
     </template>
 
-    <script src="./app.js?v=20260802-1716"></script>
+    <script src="./app.js?v=20260802-1750"></script>
   </body>
 </html>
