@@ -1,3 +1,11 @@
+@font-face {
+  font-family: "GabiaOndam";
+  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2304-2@1.0/GabiaOndam-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -31,7 +39,10 @@ body {
   margin: 0;
   overflow-x: hidden;
   color: var(--text);
-  font-family: "Manrope", "Apple SD Gothic Neo", sans-serif;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-kerning: normal;
+  font-feature-settings: "kern" 1;
+  letter-spacing: 0;
   background: transparent;
 }
 
@@ -157,7 +168,7 @@ button {
 }
 
 .music-icon {
-  font-family: "Bodoni Moda", serif;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 1.3rem;
   line-height: 1;
 }
@@ -187,7 +198,7 @@ button {
   padding: 24px 12px 0;
   border-top: 1px solid var(--line);
   color: var(--text-soft);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.68rem;
   text-align: center;
 }
@@ -220,7 +231,7 @@ button {
 
 .window-title,
 .mini-window-bar span:first-child {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.66rem;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -277,7 +288,7 @@ button {
 .section-label {
   margin: 0 0 14px;
   color: var(--cyan);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.7rem;
   font-weight: 400;
   letter-spacing: 0;
@@ -286,7 +297,7 @@ button {
 
 .hero-copy h1 {
   margin: 0;
-  font-family: "Bodoni Moda", Georgia, serif;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-weight: 400;
   letter-spacing: 0;
   line-height: 0.88;
@@ -330,7 +341,7 @@ button {
   align-items: center;
   padding: 0 14px;
   color: var(--text-faint);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.63rem;
 }
 
@@ -379,7 +390,7 @@ button {
 }
 
 .section-heading h2 {
-  font-family: "Bodoni Moda", Georgia, serif;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 1.72rem;
 }
 
@@ -396,7 +407,7 @@ button {
 }
 
 .settings-header > span {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.68rem;
   line-height: 1.35;
 }
@@ -413,7 +424,7 @@ button {
   color: var(--text-soft);
   background: rgba(120, 71, 130, 0.3);
   backdrop-filter: blur(8px);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.62rem;
 }
 
@@ -440,7 +451,7 @@ button {
 
 .session-dot span,
 .session-dot small {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   letter-spacing: 0;
 }
 
@@ -511,7 +522,7 @@ button {
   border-radius: 1px;
   color: var(--text);
   background: rgba(76, 40, 84, 0.58);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.58rem;
 }
 
@@ -551,7 +562,7 @@ button {
   place-items: center;
   color: white;
   opacity: 0;
-  font-family: "Bodoni Moda", Georgia, serif;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 7rem;
   text-shadow: 0 0 32px rgba(255, 151, 211, 0.82);
 }
@@ -586,6 +597,97 @@ button {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 12px;
+}
+
+.portrait-background-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.portrait-background-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+}
+
+.portrait-background-heading small {
+  color: var(--text-faint);
+  font-size: 0.64rem;
+}
+
+.portrait-background-heading small[data-state="ready"] {
+  color: var(--cyan);
+}
+
+.portrait-background-heading small[data-state="error"] {
+  color: var(--danger);
+}
+
+.portrait-background-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.portrait-background-option {
+  min-width: 0;
+  cursor: pointer;
+}
+
+.portrait-background-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.portrait-background-choice {
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  color: var(--text-faint);
+  background: rgba(110, 62, 121, 0.28);
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.portrait-background-swatch {
+  width: 28px;
+  height: 28px;
+  display: block;
+  border: 1px solid rgba(255, 245, 252, 0.72);
+  border-radius: 50%;
+  background: var(--portrait-background-color);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--portrait-background-color) 55%, transparent);
+}
+
+.portrait-background-choice small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.64rem;
+}
+
+.portrait-background-option input:checked + .portrait-background-choice {
+  border-color: rgba(255, 226, 246, 0.86);
+  color: var(--text);
+  background: rgba(207, 123, 180, 0.36);
+}
+
+.portrait-background-option input:focus-visible + .portrait-background-choice {
+  outline: 1px solid rgba(255, 234, 249, 0.94);
+  outline-offset: 2px;
 }
 
 .action-button,
@@ -646,7 +748,7 @@ button {
 }
 
 .shooting-note small {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.6rem;
 }
 
@@ -859,7 +961,7 @@ button {
 .strip-inner {
   position: relative;
   min-height: 1000px;
-  padding: 24px 24px 26px;
+  padding: 26px clamp(24px, 8%, 38px) 34px;
   overflow: hidden;
   isolation: isolate;
   border: 1px solid rgba(255, 226, 247, 0.28);
@@ -956,7 +1058,7 @@ button {
   justify-content: space-between;
   gap: 12px;
   color: rgba(255, 225, 246, 0.72);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.58rem;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -971,7 +1073,7 @@ button {
 
 .strip-topper span:first-child {
   color: var(--text);
-  font-family: "Bodoni Moda", Georgia, serif;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 1.65rem;
   text-transform: none;
 }
@@ -986,7 +1088,7 @@ button {
   position: relative;
   z-index: 2;
   display: grid;
-  gap: 12px;
+  gap: 18px;
 }
 
 .strip-slot {
@@ -1053,7 +1155,7 @@ button {
   border-radius: 0;
   color: rgba(242, 245, 255, 0.76);
   background: rgba(85, 44, 90, 0.62);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.54rem;
 }
 
@@ -1074,7 +1176,7 @@ button {
 
 .strip-slot-placeholder strong {
   color: var(--text-soft);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.66rem;
   font-weight: 400;
 }
@@ -1138,7 +1240,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
   color: #fff9fd;
   background: rgba(99, 48, 109, 0.92);
   box-shadow: 0 5px 16px rgba(38, 8, 43, 0.42);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 1rem;
   line-height: 1;
   pointer-events: auto;
@@ -1272,7 +1374,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 
 .saved-item strong {
   color: var(--text);
-  font-family: "Bodoni Moda", Georgia, serif;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-weight: 400;
 }
 
@@ -1356,7 +1458,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 }
 
 .workflow-progress-item span {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.64rem;
 }
 
@@ -1412,7 +1514,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 .workflow-heading h2 {
   margin: 0;
   color: var(--text);
-  font-family: "Bodoni Moda", Georgia, serif;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 2rem;
   font-weight: 400;
   letter-spacing: 0;
@@ -1478,7 +1580,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
   padding-bottom: 12px;
   border-bottom: 1px solid var(--line);
   color: var(--text-faint);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.6rem;
 }
 
@@ -1528,7 +1630,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 
 .session-dot-meta strong,
 .session-dot-meta small {
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.54rem;
   font-weight: 400;
 }
@@ -1578,7 +1680,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 .shared-preview-heading h3 {
   margin: 0;
   color: var(--text);
-  font-family: "Bodoni Moda", Georgia, serif;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 1.5rem;
   font-weight: 400;
 }
@@ -1654,7 +1756,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 
 .save-format {
   color: var(--text-faint);
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
   font-size: 0.62rem;
   line-height: 1.6;
 }
@@ -1945,7 +2047,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
   }
 
   .strip-inner {
-    padding: 18px;
+    padding: 20px 24px 24px;
   }
 }
 
@@ -1964,5 +2066,9 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 
   .capture-controls {
     grid-template-columns: 1fr;
+  }
+
+  .portrait-background-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

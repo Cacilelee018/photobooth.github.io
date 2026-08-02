@@ -24,6 +24,7 @@ python3 -m http.server 5174
 - 웹캠 실시간 프리뷰와 3초 카운트다운
 - 1컷 수동 촬영과 4컷 연속 촬영
 - 기기 이미지 불러오기와 프레임 비율 중앙 크롭
+- 인물 자동 누끼와 핑크·라일락·펄·모브 단색 배경 선택
 - 촬영 결과 선택 후 다시 촬영 또는 이미지 교체
 - 우주 프레임 테마 4종: Aurora Veil, Starlit Mirror, Lilac Nebula, Astral Spiral
 - 오브젝트 드래그, 크기, 회전, 좌우 반전, 삭제
@@ -32,7 +33,7 @@ python3 -m http.server 5174
 
 ## 배경음악 교체
 
-현재 배경음악은 `assets/audio/repemtance-broken-nail-harp-piano.mp3` 파일을 사용합니다.
+현재 배경음악은 `assets/audio/debussy-arabesque-no-1-music-box.mp3` 파일을 사용합니다.
 모바일 브라우저에서 소리 자동재생이 차단될 경우 첫 화면 터치와 동시에 재생됩니다.
 
 음원 출처: 전주정보문화산업진흥원

@@ -15,6 +15,24 @@ const BACKGROUND_VIDEO_CROSSFADE_MS = Math.round(
 const BACKGROUND_MUSIC_VOLUME = 0.38;
 const MEDIA_UNLOCK_EVENTS = ["pointerdown", "touchstart", "click", "keydown"];
 const REDUCED_MOTION_QUERY = window.matchMedia("(prefers-reduced-motion: reduce)");
+const PHOTO_WIDTH = 960;
+const PHOTO_HEIGHT = 1200;
+const MEDIAPIPE_VISION_VERSION = "1.0.1";
+const MEDIAPIPE_VISION_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VISION_VERSION}/vision_bundle.mjs`;
+const MEDIAPIPE_WASM_PATH = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VISION_VERSION}/wasm`;
+const PERSON_SEGMENTATION_MODEL = new URL(
+  "./assets/models/selfie-segmenter.tflite",
+  document.baseURI,
+).href;
+const PERSON_MASK_SOFT_EDGE_START = 0.18;
+const PERSON_MASK_SOFT_EDGE_END = 0.82;
+
+const portraitBackgrounds = [
+  { id: "blush", name: "블러시", color: "#e5b5cf" },
+  { id: "lilac", name: "라일락", color: "#bba5d5" },
+  { id: "moon", name: "문 펄", color: "#eadde8" },
+  { id: "mauve", name: "모브", color: "#775577" },
+];
 
 const themes = [
   {
@@ -207,6 +225,7 @@ const state = {
   isAutoSession: false,
   selectedThemeId: "aurora",
   capturedPhotos: Array(CUT_COUNT).fill(null),
+  rawCapturedPhotos: Array(CUT_COUNT).fill(null),
   activeSlotIndex: 0,
   savedStrips: [],
   presetStickers: createStickerAssetLibrary(),
@@ -224,6 +243,11 @@ const state = {
   backgroundVideoVisibilityHandler: null,
   backgroundMusicDesired: true,
   backgroundMusicUnlockHandler: null,
+  selectedPortraitBackgroundId: portraitBackgrounds[0].id,
+  portraitSegmenter: null,
+  portraitSegmenterPromise: null,
+  portraitSegmentationState: "idle",
+  isPhotoProcessing: false,
 };
 
 const refs = {
@@ -254,6 +278,8 @@ const refs = {
   startCameraButton: document.getElementById("startCameraButton"),
   uploadPhotoButton: document.getElementById("uploadPhotoButton"),
   photoUploadInput: document.getElementById("photoUploadInput"),
+  portraitBackgroundOptions: document.getElementById("portraitBackgroundOptions"),
+  portraitSegmentationStatus: document.getElementById("portraitSegmentationStatus"),
   captureButton: document.getElementById("captureButton"),
   autoCaptureButton: document.getElementById("autoCaptureButton"),
   retakeButton: document.getElementById("retakeButton"),
@@ -335,6 +361,248 @@ function loadImage(source) {
   });
 }
 
+function getSelectedPortraitBackground() {
+  return (
+    portraitBackgrounds.find((background) => background.id === state.selectedPortraitBackgroundId) ||
+    portraitBackgrounds[0]
+  );
+}
+
+function smoothstep(start, end, value) {
+  const amount = clamp((value - start) / (end - start), 0, 1);
+  return amount * amount * (3 - 2 * amount);
+}
+
+function setPortraitSegmentationState(nextState, message) {
+  state.portraitSegmentationState = nextState;
+  if (!refs.portraitSegmentationStatus) {
+    return;
+  }
+
+  refs.portraitSegmentationStatus.dataset.state = nextState;
+  refs.portraitSegmentationStatus.textContent = message;
+}
+
+function renderPortraitBackgroundOptions() {
+  if (!refs.portraitBackgroundOptions) {
+    return;
+  }
+
+  refs.portraitBackgroundOptions.innerHTML = "";
+
+  portraitBackgrounds.forEach((background) => {
+    const label = document.createElement("label");
+    label.className = "portrait-background-option";
+    label.title = `${background.name} 단색 배경`;
+
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "portrait-background";
+    input.value = background.id;
+    input.checked = background.id === state.selectedPortraitBackgroundId;
+    input.disabled = state.isCountingDown || state.isAutoSession || state.isPhotoProcessing;
+    input.addEventListener("change", () => handlePortraitBackgroundChange(background.id));
+
+    const choice = document.createElement("span");
+    choice.className = "portrait-background-choice";
+
+    const swatch = document.createElement("i");
+    swatch.className = "portrait-background-swatch";
+    swatch.style.setProperty("--portrait-background-color", background.color);
+    swatch.setAttribute("aria-hidden", "true");
+
+    const name = document.createElement("small");
+    name.textContent = background.name;
+
+    choice.append(swatch, name);
+    label.append(input, choice);
+    refs.portraitBackgroundOptions.appendChild(label);
+  });
+}
+
+async function ensurePortraitSegmenter() {
+  if (state.portraitSegmenter) {
+    return state.portraitSegmenter;
+  }
+
+  if (state.portraitSegmenterPromise) {
+    return state.portraitSegmenterPromise;
+  }
+
+  setPortraitSegmentationState("loading", "누끼 모델 불러오는 중");
+
+  state.portraitSegmenterPromise = (async () => {
+    const { FilesetResolver, ImageSegmenter } = await import(MEDIAPIPE_VISION_MODULE);
+    const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_PATH);
+    const segmenter = await ImageSegmenter.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: PERSON_SEGMENTATION_MODEL,
+        delegate: "CPU",
+      },
+      runningMode: "IMAGE",
+      outputCategoryMask: false,
+      outputConfidenceMasks: true,
+    });
+
+    state.portraitSegmenter = segmenter;
+    setPortraitSegmentationState("ready", "자동 누끼 준비 완료");
+    return segmenter;
+  })().catch((error) => {
+    state.portraitSegmenterPromise = null;
+    setPortraitSegmentationState("error", "누끼 준비 실패 · 원본 유지");
+    throw error;
+  });
+
+  return state.portraitSegmenterPromise;
+}
+
+function createNormalizedPhotoCanvas(source, sourceWidth, sourceHeight) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  canvas.width = PHOTO_WIDTH;
+  canvas.height = PHOTO_HEIGHT;
+  drawImageCover(context, source, sourceWidth, sourceHeight, PHOTO_WIDTH, PHOTO_HEIGHT);
+  return canvas;
+}
+
+async function createPortraitComposite(rawPhoto, segmenter, background) {
+  const image = await loadImage(rawPhoto);
+  const photoCanvas = createNormalizedPhotoCanvas(image, image.naturalWidth, image.naturalHeight);
+  const result = segmenter.segment(photoCanvas);
+
+  try {
+    const masks = result.confidenceMasks || [];
+    const labels = segmenter.getLabels();
+    const labelledPersonIndex = labels.findIndex((label) => label.toLowerCase().includes("person"));
+    const personMaskIndex = labelledPersonIndex >= 0 ? labelledPersonIndex : masks.length > 1 ? 1 : 0;
+    const personMask = masks[personMaskIndex];
+
+    if (!personMask) {
+      throw new Error("인물 마스크를 생성하지 못했습니다.");
+    }
+
+    const maskWidth = personMask.width;
+    const maskHeight = personMask.height;
+    const confidence = personMask.getAsFloat32Array();
+    const maskCanvas = document.createElement("canvas");
+    maskCanvas.width = maskWidth;
+    maskCanvas.height = maskHeight;
+    const maskContext = maskCanvas.getContext("2d");
+    const maskImage = maskContext.createImageData(maskWidth, maskHeight);
+
+    for (let index = 0; index < confidence.length; index += 1) {
+      const offset = index * 4;
+      const alpha = Math.round(
+        smoothstep(PERSON_MASK_SOFT_EDGE_START, PERSON_MASK_SOFT_EDGE_END, confidence[index]) * 255,
+      );
+      maskImage.data[offset] = 255;
+      maskImage.data[offset + 1] = 255;
+      maskImage.data[offset + 2] = 255;
+      maskImage.data[offset + 3] = alpha;
+    }
+
+    maskContext.putImageData(maskImage, 0, 0);
+
+    const personCanvas = document.createElement("canvas");
+    const personContext = personCanvas.getContext("2d");
+    personCanvas.width = PHOTO_WIDTH;
+    personCanvas.height = PHOTO_HEIGHT;
+    personContext.drawImage(photoCanvas, 0, 0);
+    personContext.globalCompositeOperation = "destination-in";
+    personContext.imageSmoothingEnabled = true;
+    personContext.imageSmoothingQuality = "high";
+    personContext.drawImage(maskCanvas, 0, 0, PHOTO_WIDTH, PHOTO_HEIGHT);
+
+    const outputCanvas = document.createElement("canvas");
+    const outputContext = outputCanvas.getContext("2d");
+    outputCanvas.width = PHOTO_WIDTH;
+    outputCanvas.height = PHOTO_HEIGHT;
+    outputContext.fillStyle = background.color;
+    outputContext.fillRect(0, 0, PHOTO_WIDTH, PHOTO_HEIGHT);
+    outputContext.drawImage(personCanvas, 0, 0);
+
+    return outputCanvas.toDataURL("image/png");
+  } finally {
+    result.close();
+  }
+}
+
+async function processAndStorePhoto(slotIndex, rawPhoto) {
+  state.rawCapturedPhotos[slotIndex] = rawPhoto;
+  state.isPhotoProcessing = true;
+  setPortraitSegmentationState("processing", "인물 분리 중");
+  renderPortraitBackgroundOptions();
+  updateControlState();
+
+  try {
+    const segmenter = await ensurePortraitSegmenter();
+    setPortraitSegmentationState("processing", "인물 분리 중");
+    state.capturedPhotos[slotIndex] = await createPortraitComposite(
+      rawPhoto,
+      segmenter,
+      getSelectedPortraitBackground(),
+    );
+    setPortraitSegmentationState("ready", "자동 누끼 준비 완료");
+  } catch (error) {
+    console.error(error);
+    state.capturedPhotos[slotIndex] = rawPhoto;
+    setPortraitSegmentationState("error", "누끼 실패 · 원본 유지");
+  } finally {
+    state.isPhotoProcessing = false;
+    renderPortraitBackgroundOptions();
+    renderPreviewShell();
+  }
+}
+
+async function handlePortraitBackgroundChange(backgroundId) {
+  if (state.isCountingDown || state.isAutoSession || state.isPhotoProcessing) {
+    return;
+  }
+
+  state.selectedPortraitBackgroundId = backgroundId;
+  renderPortraitBackgroundOptions();
+
+  const occupiedSlots = state.rawCapturedPhotos
+    .map((photo, index) => (photo ? index : -1))
+    .filter((index) => index !== -1);
+
+  if (!occupiedSlots.length) {
+    ensurePortraitSegmenter().catch((error) => console.error(error));
+    return;
+  }
+
+  state.isPhotoProcessing = true;
+  setPortraitSegmentationState("processing", "배경색 다시 적용 중");
+  renderPortraitBackgroundOptions();
+  updateControlState();
+
+  try {
+    const segmenter = await ensurePortraitSegmenter();
+    const background = getSelectedPortraitBackground();
+    setPortraitSegmentationState("processing", "배경색 다시 적용 중");
+
+    for (const slotIndex of occupiedSlots) {
+      state.capturedPhotos[slotIndex] = await createPortraitComposite(
+        state.rawCapturedPhotos[slotIndex],
+        segmenter,
+        background,
+      );
+    }
+
+    setPortraitSegmentationState("ready", "자동 누끼 준비 완료");
+  } catch (error) {
+    console.error(error);
+    occupiedSlots.forEach((slotIndex) => {
+      state.capturedPhotos[slotIndex] = state.rawCapturedPhotos[slotIndex];
+    });
+    setPortraitSegmentationState("error", "누끼 실패 · 원본 유지");
+  } finally {
+    state.isPhotoProcessing = false;
+    renderPortraitBackgroundOptions();
+    renderPreviewShell();
+  }
+}
+
 function getSelectedTheme() {
   return themes.find((theme) => theme.id === state.selectedThemeId) || themes[0];
 }
@@ -359,7 +627,7 @@ function getPreviewMount(step) {
 
 function updateWorkflowControls() {
   const isComplete = getFilledCount() === CUT_COUNT;
-  const isBusy = state.isCountingDown || state.isAutoSession;
+  const isBusy = state.isCountingDown || state.isAutoSession || state.isPhotoProcessing;
 
   refs.captureNextButton.disabled = !isComplete || isBusy;
   refs.stickerNextButton.disabled = !isComplete;
@@ -418,6 +686,10 @@ function goToWorkflowStep(step, options = {}) {
   state.selectedStickerId = null;
   renderPreviewShell();
   renderWorkflow();
+
+  if (targetStep === 2) {
+    ensurePortraitSegmenter().catch((error) => console.error(error));
+  }
 
   const activeHeading = document.querySelector(`[data-workflow-step="${targetStep}"] h2`);
   activeHeading?.focus({ preventScroll: true });
@@ -1206,11 +1478,15 @@ function updateControlState() {
   const hasStream = Boolean(state.stream);
   const filledCount = getFilledCount();
   const activePhoto = state.capturedPhotos[state.activeSlotIndex];
-  const isBusy = state.isCountingDown || state.isAutoSession;
+  const isBusy = state.isCountingDown || state.isAutoSession || state.isPhotoProcessing;
   const isComplete = filledCount === CUT_COUNT;
 
   refs.cameraStage.classList.toggle("is-ready", hasStream);
-  refs.cameraStatus.textContent = hasStream ? "카메라 연결됨" : "카메라 대기 중";
+  refs.cameraStatus.textContent = state.isPhotoProcessing
+    ? "인물 분리 중"
+    : hasStream
+      ? "카메라 연결됨"
+      : "카메라 대기 중";
   refs.boothModeLabel.textContent = state.isAutoSession ? "AUTO SEQUENCE" : "MANUAL";
   refs.currentSlotLabel.textContent = `CUT ${String(state.activeSlotIndex + 1).padStart(2, "0")}`;
   refs.sessionMessage.textContent = getSessionMessage(filledCount);
@@ -1218,7 +1494,12 @@ function updateControlState() {
   refs.autoCaptureButton.disabled = !hasStream || isBusy || isComplete;
   refs.retakeButton.disabled = !activePhoto || isBusy;
   refs.saveButton.disabled = filledCount !== CUT_COUNT || isBusy;
-  refs.startCameraButton.disabled = state.isCountingDown;
+  refs.startCameraButton.disabled = isBusy;
+  refs.uploadPhotoButton.disabled = isBusy;
+  refs.photoUploadInput.disabled = isBusy;
+  refs.portraitBackgroundOptions.querySelectorAll("input").forEach((input) => {
+    input.disabled = isBusy;
+  });
   updateWorkflowControls();
 }
 
@@ -1244,6 +1525,7 @@ function renderPreviewShell() {
 
 function renderAll() {
   renderThemeOptions();
+  renderPortraitBackgroundOptions();
   renderStickerOptions();
   renderPreviewShell();
   renderSavedGallery();
@@ -1348,20 +1630,18 @@ function captureCurrentFrame() {
   }
 
   const canvas = document.createElement("canvas");
-  const width = 960;
-  const height = 1200;
   const context = canvas.getContext("2d");
 
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = PHOTO_WIDTH;
+  canvas.height = PHOTO_HEIGHT;
 
   drawImageCover(
     context,
     refs.camera,
     refs.camera.videoWidth,
     refs.camera.videoHeight,
-    width,
-    height,
+    PHOTO_WIDTH,
+    PHOTO_HEIGHT,
     true,
   );
 
@@ -1374,12 +1654,17 @@ async function normalizeUploadedPhoto(file) {
   try {
     const image = await loadImage(sourceUrl);
     const canvas = document.createElement("canvas");
-    const width = 960;
-    const height = 1200;
     const context = canvas.getContext("2d");
-    canvas.width = width;
-    canvas.height = height;
-    drawImageCover(context, image, image.naturalWidth, image.naturalHeight, width, height);
+    canvas.width = PHOTO_WIDTH;
+    canvas.height = PHOTO_HEIGHT;
+    drawImageCover(
+      context,
+      image,
+      image.naturalWidth,
+      image.naturalHeight,
+      PHOTO_WIDTH,
+      PHOTO_HEIGHT,
+    );
     return canvas.toDataURL("image/jpeg", 0.94);
   } finally {
     URL.revokeObjectURL(sourceUrl);
@@ -1390,7 +1675,7 @@ async function handlePhotoUpload(event) {
   const files = Array.from(event.target.files || []).filter((file) => file.type.startsWith("image/"));
   event.target.value = "";
 
-  if (!files.length || state.isCountingDown || state.isAutoSession) {
+  if (!files.length || state.isCountingDown || state.isAutoSession || state.isPhotoProcessing) {
     return;
   }
 
@@ -1406,8 +1691,9 @@ async function handlePhotoUpload(event) {
   try {
     const uploadCount = Math.min(files.length, targets.length);
     for (let index = 0; index < uploadCount; index += 1) {
-      state.capturedPhotos[targets[index]] = await normalizeUploadedPhoto(files[index]);
+      const rawPhoto = await normalizeUploadedPhoto(files[index]);
       state.activeSlotIndex = targets[index];
+      await processAndStorePhoto(targets[index], rawPhoto);
     }
 
     const nextEmptySlot = getNextEmptySlot(state.activeSlotIndex + 1);
@@ -1423,11 +1709,13 @@ async function handlePhotoUpload(event) {
 
 function handleRetake() {
   state.capturedPhotos[state.activeSlotIndex] = null;
+  state.rawCapturedPhotos[state.activeSlotIndex] = null;
   renderPreviewShell();
 }
 
 function handleReset() {
   state.capturedPhotos = Array(CUT_COUNT).fill(null);
+  state.rawCapturedPhotos = Array(CUT_COUNT).fill(null);
   state.activeSlotIndex = 0;
   state.stickers = [];
   state.selectedStickerId = null;
@@ -1450,11 +1738,11 @@ async function captureIntoSlot(slotIndex) {
   state.activeSlotIndex = slotIndex;
   renderPreviewShell();
   await runCountdown();
-  state.capturedPhotos[slotIndex] = captureCurrentFrame();
+  await processAndStorePhoto(slotIndex, captureCurrentFrame());
 }
 
 async function handleCapture() {
-  if (!state.stream || state.isCountingDown || state.isAutoSession) {
+  if (!state.stream || state.isCountingDown || state.isAutoSession || state.isPhotoProcessing) {
     return;
   }
 
@@ -1489,7 +1777,7 @@ function getAutoSessionTargets() {
 }
 
 async function handleAutoCapture() {
-  if (!state.stream || state.isCountingDown || state.isAutoSession) {
+  if (!state.stream || state.isCountingDown || state.isAutoSession || state.isPhotoProcessing) {
     return;
   }
 
@@ -1925,13 +2213,15 @@ async function generateStripDataUrl() {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
-  const width = 860;
-  const outerPadding = 42;
-  const shellInset = 18;
-  const topBarHeight = 126;
-  const shellHeaderGap = 18;
-  const footerHeight = 112;
-  const slotGap = 16;
+  await document.fonts.load('48px "GabiaOndam"').catch(() => undefined);
+
+  const width = 960;
+  const outerPadding = 80;
+  const shellInset = 20;
+  const topBarHeight = 136;
+  const shellHeaderGap = 20;
+  const footerHeight = 120;
+  const slotGap = 26;
   const photoWidth = width - outerPadding * 2;
   const photoHeight = Math.round((photoWidth * 5) / 4);
   const slotsTop = outerPadding + topBarHeight + shellHeaderGap;
@@ -1957,14 +2247,14 @@ async function generateStripDataUrl() {
   drawWindowLights(context, shellX + 24, shellY + 24);
 
   context.fillStyle = theme.palette.ink;
-  context.font = "48px Georgia, serif";
+  context.font = '48px "GabiaOndam", sans-serif';
   context.textAlign = "left";
   context.fillText("SPECTRA", outerPadding, shellY + 70);
-  context.font = "italic 22px Georgia, serif";
+  context.font = '22px "GabiaOndam", sans-serif';
   context.fillStyle = withAlpha(theme.palette.border, 0.72);
   context.fillText(theme.name, outerPadding, shellY + 100);
 
-  context.font = "10px 'IBM Plex Mono', monospace";
+  context.font = '10px "GabiaOndam", sans-serif';
   context.textAlign = "right";
   context.fillStyle = withAlpha(theme.palette.border, 0.55);
   context.fillText(theme.shellLabel, width - outerPadding, shellY + 42);
@@ -2007,7 +2297,7 @@ async function generateStripDataUrl() {
       context.fillRect(outerPadding, slotY, photoWidth, photoHeight);
       context.fillStyle = withAlpha(theme.palette.ink, 0.72);
       context.textAlign = "center";
-      context.font = "14px 'IBM Plex Mono', monospace";
+      context.font = '14px "GabiaOndam", sans-serif';
       context.fillText(`FRAME ${String(index + 1).padStart(2, "0")}`, width / 2, slotY + photoHeight / 2);
     }
 
@@ -2025,7 +2315,7 @@ async function generateStripDataUrl() {
     context.strokeRect(outerPadding + 14, slotY + 14, 82, 24);
     context.fillStyle = withAlpha(theme.palette.border, 0.78);
     context.textAlign = "left";
-    context.font = "10px 'IBM Plex Mono', monospace";
+    context.font = '10px "GabiaOndam", sans-serif';
     context.fillText(`CUT ${String(index + 1).padStart(2, "0")}`, outerPadding + 24, slotY + 30);
 
     context.save();
@@ -2061,7 +2351,7 @@ async function generateStripDataUrl() {
   });
 
   context.fillStyle = theme.palette.ink;
-  context.font = "10px 'IBM Plex Mono', monospace";
+  context.font = '10px "GabiaOndam", sans-serif';
   context.textAlign = "left";
   context.fillText("CELESTIAL IMAGE ARCHIVE", outerPadding, footerY + 42);
   context.fillText(theme.tagLine, outerPadding, footerY + 58);
@@ -2175,6 +2465,8 @@ function bindEvents() {
     if (state.backdropAnimationFrame) {
       window.cancelAnimationFrame(state.backdropAnimationFrame);
     }
+
+    state.portraitSegmenter?.close();
   });
 }
 
