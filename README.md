@@ -36,3 +36,13 @@ python3 -m http.server 5174
 모바일 브라우저에서 소리 자동재생이 차단될 경우 첫 화면 터치와 동시에 재생됩니다.
 
 음원 출처: 전주정보문화산업진흥원
+
+## GitHub Pages 배포
+
+`index.html`, `styles.css`, `app.js`, `.nojekyll`, `assets` 폴더를 반드시 같은 커밋에 함께 올립니다.
+GitHub 저장소의 `Settings → Pages`에서 배포 소스를 실제 파일이 있는 브랜치의 `/ (root)`로 지정합니다.
+
+배포 후 화면에 이전 디자인이 섞여 보이면 Pages 빌드가 끝난 뒤 브라우저에서 강력 새로고침합니다.
+
+- macOS Chrome: `Command + Shift + R`
+- iPhone Safari: 설정에서 해당 사이트의 웹사이트 데이터를 지운 뒤 다시 접속
