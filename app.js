@@ -1687,6 +1687,38 @@ function setCameraMessage(message, help, isError = false) {
   refs.cameraEmpty.classList.toggle("is-error", isError);
 }
 
+function getCameraEnvironment() {
+  const userAgent = navigator.userAgent;
+  const isAndroid = /Android/i.test(userAgent);
+  const isMac = /Macintosh|Mac OS X/i.test(userAgent) && !/iPhone|iPad|iPod/i.test(userAgent);
+  const isSafari = /Safari/i.test(userAgent) && !/Chrome|CriOS|Chromium|Edg|OPR/i.test(userAgent);
+  const isInAppBrowser = /KAKAOTALK|Instagram|FBAN|FBAV|Line\/|NAVER|DaumApps|; wv\)/i.test(userAgent);
+
+  return { isAndroid, isMac, isSafari, isInAppBrowser };
+}
+
+function getCameraPermissionHelp() {
+  const environment = getCameraEnvironment();
+
+  if (environment.isInAppBrowser) {
+    return "현재 앱 내부 브라우저에서는 카메라가 차단될 수 있어요. 우측 상단 메뉴에서 'Chrome으로 열기' 또는 'Safari로 열기'를 선택해 주세요.";
+  }
+
+  if (environment.isAndroid) {
+    return "Chrome 주소창의 사이트 정보 → 권한 → 카메라를 허용해 주세요. 계속 막히면 Android 설정 → 앱 → Chrome → 권한 → 카메라도 허용해야 합니다.";
+  }
+
+  if (environment.isMac && environment.isSafari) {
+    return "Safari → 설정 → 웹사이트 → 카메라에서 이 사이트를 허용하고, macOS 시스템 설정 → 개인정보 보호 및 보안 → 카메라에서도 Safari를 켜 주세요.";
+  }
+
+  if (environment.isMac) {
+    return "주소창의 사이트 설정에서 카메라를 허용하고, macOS 시스템 설정 → 개인정보 보호 및 보안 → 카메라에서도 현재 브라우저를 켠 뒤 브라우저를 다시 열어 주세요.";
+  }
+
+  return "브라우저의 사이트 설정과 기기 설정에서 카메라 권한을 모두 허용한 뒤 다시 시작해 주세요.";
+}
+
 function getCameraErrorMessage(error) {
   const errorName = error?.name || "UnknownError";
 
@@ -1702,7 +1734,7 @@ function getCameraErrorMessage(error) {
     return {
       status: "카메라 권한이 차단됐어요",
       message: "이 사이트의 카메라 권한을 허용해 주세요.",
-      help: "브라우저 주소창의 자물쇠 또는 사이트 설정에서 카메라를 '허용'으로 바꾼 뒤 다시 시작해 주세요.",
+      help: getCameraPermissionHelp(),
     };
   }
 
@@ -1733,7 +1765,7 @@ async function requestCameraStream() {
   try {
     return await navigator.mediaDevices.getUserMedia({
       video: {
-        facingMode: "user",
+        facingMode: { ideal: "user" },
         width: { ideal: 1280 },
         height: { ideal: 960 },
       },
@@ -1745,7 +1777,7 @@ async function requestCameraStream() {
     }
 
     return navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" },
+      video: true,
       audio: false,
     });
   }
@@ -1773,7 +1805,9 @@ async function startCamera() {
     refs.cameraStatus.textContent = "카메라 미지원 브라우저";
     setCameraMessage(
       "이 브라우저에서는 카메라 기능을 사용할 수 없어요.",
-      "최신 Safari, Chrome 또는 Edge에서 다시 접속하거나 '사진 불러오기'를 이용해 주세요.",
+      getCameraEnvironment().isInAppBrowser
+        ? getCameraPermissionHelp()
+        : "최신 Safari, Chrome 또는 Edge에서 다시 접속하거나 '사진 불러오기'를 이용해 주세요.",
       true,
     );
     return;
