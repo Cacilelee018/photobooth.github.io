@@ -592,6 +592,20 @@ button {
   line-height: 1.7;
 }
 
+.camera-empty small {
+  max-width: 430px;
+  line-height: 1.65;
+  text-wrap: balance;
+}
+
+.camera-empty.is-error p {
+  color: var(--text);
+}
+
+.camera-empty.is-error small {
+  color: rgba(255, 220, 240, 0.82);
+}
+
 .controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

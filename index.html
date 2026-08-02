@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0" />
     <title>SPECTRA PHOTOBOOTH</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260802-1750" />
+    <link rel="stylesheet" href="./styles.css?v=20260802-1810" />
   </head>
   <body>
     <div class="cosmic-video-bg" aria-hidden="true">
@@ -155,9 +155,9 @@
                     </div>
                     <div class="countdown" id="countdown">3</div>
                   </div>
-                  <div class="camera-empty" id="cameraEmpty">
-                    <p>카메라를 시작하거나 기기에 저장된 사진을 불러와 주세요.</p>
-                    <small>모바일에서는 HTTPS 환경에서 카메라 권한을 허용해야 합니다.</small>
+                  <div class="camera-empty" id="cameraEmpty" aria-live="polite">
+                    <p id="cameraMessage">카메라를 시작하거나 기기에 저장된 사진을 불러와 주세요.</p>
+                    <small id="cameraHelp">모바일에서는 HTTPS 환경에서 카메라 권한을 허용해야 합니다.</small>
                   </div>
                 </div>
 
@@ -370,6 +370,6 @@
       </button>
     </template>
 
-    <script src="./app.js?v=20260802-1750"></script>
+    <script src="./app.js?v=20260802-1810"></script>
   </body>
 </html>

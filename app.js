@@ -273,6 +273,9 @@ const refs = {
   camera: document.getElementById("camera"),
   cameraStage: document.getElementById("cameraStage"),
   cameraStatus: document.getElementById("cameraStatus"),
+  cameraEmpty: document.getElementById("cameraEmpty"),
+  cameraMessage: document.getElementById("cameraMessage"),
+  cameraHelp: document.getElementById("cameraHelp"),
   countdown: document.getElementById("countdown"),
   boothModeLabel: document.getElementById("boothModeLabel"),
   currentSlotLabel: document.getElementById("currentSlotLabel"),
@@ -1678,18 +1681,57 @@ function renderAll() {
   renderWorkflow();
 }
 
-async function startCamera() {
-  if (state.stream) {
-    return;
+function setCameraMessage(message, help, isError = false) {
+  refs.cameraMessage.textContent = message;
+  refs.cameraHelp.textContent = help;
+  refs.cameraEmpty.classList.toggle("is-error", isError);
+}
+
+function getCameraErrorMessage(error) {
+  const errorName = error?.name || "UnknownError";
+
+  if (!window.isSecureContext) {
+    return {
+      status: "HTTPS 연결이 필요해요",
+      message: "현재 주소에서는 카메라를 열 수 없어요.",
+      help: "GitHub 저장소 화면이 아니라 https://로 시작하는 GitHub Pages 배포 주소에서 접속해 주세요.",
+    };
   }
 
-  if (!navigator.mediaDevices?.getUserMedia) {
-    alert("이 브라우저에서는 카메라 기능을 사용할 수 없어요.");
-    return;
+  if (["NotAllowedError", "PermissionDeniedError", "SecurityError"].includes(errorName)) {
+    return {
+      status: "카메라 권한이 차단됐어요",
+      message: "이 사이트의 카메라 권한을 허용해 주세요.",
+      help: "브라우저 주소창의 자물쇠 또는 사이트 설정에서 카메라를 '허용'으로 바꾼 뒤 다시 시작해 주세요.",
+    };
   }
 
+  if (["NotReadableError", "TrackStartError"].includes(errorName)) {
+    return {
+      status: "카메라를 사용 중이에요",
+      message: "다른 앱이나 브라우저 탭이 카메라를 사용하고 있어요.",
+      help: "화상회의 앱과 다른 카메라 탭을 닫은 뒤 다시 시도해 주세요.",
+    };
+  }
+
+  if (["NotFoundError", "DevicesNotFoundError"].includes(errorName)) {
+    return {
+      status: "카메라를 찾지 못했어요",
+      message: "사용 가능한 카메라가 연결되어 있지 않아요.",
+      help: "기기의 카메라 연결을 확인하거나 '사진 불러오기'를 이용해 주세요.",
+    };
+  }
+
+  return {
+    status: "카메라 연결에 실패했어요",
+    message: "카메라를 시작하지 못했어요.",
+    help: "브라우저를 새로고침한 뒤 다시 시도하거나 '사진 불러오기'를 이용해 주세요.",
+  };
+}
+
+async function requestCameraStream() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
+    return await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: "user",
         width: { ideal: 1280 },
@@ -1697,15 +1739,59 @@ async function startCamera() {
       },
       audio: false,
     });
+  } catch (error) {
+    if (!["OverconstrainedError", "ConstraintNotSatisfiedError"].includes(error?.name)) {
+      throw error;
+    }
+
+    return navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" },
+      audio: false,
+    });
+  }
+}
+
+async function startCamera() {
+  if (state.stream) {
+    return;
+  }
+
+  setCameraMessage(
+    "카메라 연결을 준비하고 있어요.",
+    "권한 요청이 나타나면 카메라 사용을 허용해 주세요.",
+  );
+  refs.cameraStatus.textContent = "카메라 연결 중";
+
+  if (!window.isSecureContext) {
+    const cameraError = getCameraErrorMessage({ name: "SecurityError" });
+    refs.cameraStatus.textContent = cameraError.status;
+    setCameraMessage(cameraError.message, cameraError.help, true);
+    return;
+  }
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    refs.cameraStatus.textContent = "카메라 미지원 브라우저";
+    setCameraMessage(
+      "이 브라우저에서는 카메라 기능을 사용할 수 없어요.",
+      "최신 Safari, Chrome 또는 Edge에서 다시 접속하거나 '사진 불러오기'를 이용해 주세요.",
+      true,
+    );
+    return;
+  }
+
+  try {
+    const stream = await requestCameraStream();
 
     state.stream = stream;
     refs.camera.srcObject = stream;
-    await refs.camera.play();
+    await refs.camera.play().catch((error) => console.warn("Camera preview autoplay was delayed.", error));
+    refs.cameraEmpty.classList.remove("is-error");
     updateControlState();
   } catch (error) {
     console.error(error);
-    refs.cameraStatus.textContent = "카메라 권한이 필요해요";
-    alert("카메라를 시작하지 못했어요. 브라우저 권한과 localhost/HTTPS 환경을 확인해 주세요.");
+    const cameraError = getCameraErrorMessage(error);
+    refs.cameraStatus.textContent = cameraError.status;
+    setCameraMessage(cameraError.message, cameraError.help, true);
   }
 }
 

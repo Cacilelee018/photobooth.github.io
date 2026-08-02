@@ -48,3 +48,10 @@ GitHub 저장소의 `Settings → Pages`에서 배포 소스를 실제 파일이
 
 - macOS Chrome: `Command + Shift + R`
 - iPhone Safari: 설정에서 해당 사이트의 웹사이트 데이터를 지운 뒤 다시 접속
+
+### 배포 사이트에서 카메라가 열리지 않을 때
+
+- `github.com/.../blob/...` 저장소 화면이 아니라 `https://사용자명.github.io/저장소명/` Pages 주소로 접속합니다.
+- 주소창의 사이트 설정에서 카메라 권한을 `허용`으로 바꾼 뒤 페이지를 새로고침합니다.
+- 화상회의 앱이나 로컬 테스트 탭이 카메라를 사용 중이면 닫고 다시 시도합니다.
+- iPhone은 `설정 → Safari → 카메라`, Android Chrome은 `사이트 설정 → 카메라`에서도 권한을 확인합니다.
