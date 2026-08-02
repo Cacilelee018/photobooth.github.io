@@ -21,6 +21,8 @@
         autoplay
         muted
         playsinline
+        webkit-playsinline
+        disablepictureinpicture
         preload="auto"
         poster="./assets/background/aurora-fallback.png"
       >
@@ -32,6 +34,8 @@
         id="cosmicBackgroundVideoB"
         muted
         playsinline
+        webkit-playsinline
+        disablepictureinpicture
         preload="auto"
         poster="./assets/background/aurora-fallback.png"
       >
@@ -44,7 +48,7 @@
     <div class="background-grid"></div>
 
     <audio id="backgroundMusic" autoplay loop preload="auto">
-      <source src="./assets/audio/fantasy-universe-night-forest.mp3" type="audio/mpeg" />
+      <source src="./assets/audio/repemtance-broken-nail-harp-piano.mp3" type="audio/mpeg" />
     </audio>
     <button
       class="music-toggle is-waiting"
@@ -77,206 +81,257 @@
           </div>
         </div>
 
-        <div class="hero-side">
-          <div class="celestial-poster" aria-hidden="true">
-            <div class="poster-meta"><span>GEMINGA</span><span>PSR J0633+1746</span></div>
-            <div class="poster-star"><i></i></div>
-            <div class="poster-orbit poster-orbit-a"></div>
-            <div class="poster-orbit poster-orbit-b"></div>
-            <div class="poster-crosshair"></div>
-            <div class="poster-title"><strong>PULSAR</strong><small>THE LIGHT REMAINS</small></div>
-          </div>
-          <div class="hero-index">
-            <span>RA 06h 33m 54s</span>
-            <span>DEC +17° 46′ 12″</span>
-            <span>FRAME SERIES / 001—004</span>
-          </div>
-        </div>
       </section>
 
-      <section class="workspace">
-        <div class="studio-column">
-          <article class="glass-panel live-panel">
+      <section class="workflow-shell" id="workflowShell">
+        <nav class="workflow-progress glass-panel" aria-label="포토부스 제작 단계">
+          <button class="workflow-progress-item active" type="button" data-workflow-target="1" aria-current="step">
+            <span>01</span><strong>프레임</strong>
+          </button>
+          <button class="workflow-progress-item" type="button" data-workflow-target="2" disabled>
+            <span>02</span><strong>촬영</strong>
+          </button>
+          <button class="workflow-progress-item" type="button" data-workflow-target="3" disabled>
+            <span>03</span><strong>꾸미기</strong>
+          </button>
+          <button class="workflow-progress-item" type="button" data-workflow-target="4" disabled>
+            <span>04</span><strong>미리보기</strong>
+          </button>
+          <button class="workflow-progress-item" type="button" data-workflow-target="5" disabled>
+            <span>05</span><strong>저장</strong>
+          </button>
+        </nav>
+
+        <section class="workflow-stage active" data-workflow-step="1" aria-labelledby="frameStepTitle">
+          <article class="glass-panel workflow-panel frame-step-panel">
             <div class="window-bar">
-              <span class="window-title">CAPTURE / LIVE SENSOR</span>
+              <span class="window-title">STEP 01 / FRAME SELECTION</span>
               <span class="window-lights"><i></i><i></i><i></i></span>
             </div>
-            <div class="section-heading">
+            <div class="workflow-heading">
+              <div>
+                <p class="section-label">FRAME</p>
+                <h2 id="frameStepTitle" tabindex="-1">먼저 프레임을 선택하세요</h2>
+                <p>선택한 테마는 촬영부터 최종 저장 이미지까지 그대로 적용됩니다.</p>
+              </div>
+              <div class="status-pill" id="themeSummary">Aurora Veil</div>
+            </div>
+
+            <div class="frame-step-layout">
+              <div class="theme-options" id="themeOptions"></div>
+            </div>
+
+            <div class="workflow-actions align-end">
+              <button class="action-button chrome workflow-next" id="frameNextButton" type="button">
+                이 프레임으로 촬영하기
+              </button>
+            </div>
+          </article>
+        </section>
+
+        <section class="workflow-stage" data-workflow-step="2" aria-labelledby="captureStepTitle" hidden>
+          <article class="glass-panel workflow-panel live-panel">
+            <div class="window-bar">
+              <span class="window-title">STEP 02 / CAPTURE & REVIEW</span>
+              <span class="window-lights"><i></i><i></i><i></i></span>
+            </div>
+            <div class="workflow-heading">
               <div>
                 <p class="section-label">CAPTURE</p>
-                <h2>사진 촬영</h2>
+                <h2 id="captureStepTitle" tabindex="-1">네 번의 순간을 담아주세요</h2>
+                <p>카메라로 촬영하거나 이미지를 불러오고, 원하는 컷을 선택해 다시 촬영할 수 있습니다.</p>
               </div>
               <div class="status-pill" id="cameraStatus">카메라 대기 중</div>
             </div>
 
-            <div class="session-strip" id="sessionStrip" aria-label="촬영 진행 상태"></div>
-
-            <div class="camera-stage" id="cameraStage">
-              <video id="camera" autoplay playsinline muted></video>
-              <div class="camera-overlay">
-                <div class="overlay-badge">REC / SPECTRA</div>
-                <div class="overlay-corner overlay-corner-top"></div>
-                <div class="overlay-corner overlay-corner-bottom"></div>
-                <div class="camera-hud">
-                  <span class="hud-chip" id="boothModeLabel">MANUAL MODE</span>
-                  <span class="hud-chip" id="currentSlotLabel">CUT 01</span>
+            <div class="capture-layout">
+              <div class="capture-main">
+                <div class="camera-stage" id="cameraStage">
+                  <video id="camera" autoplay playsinline muted></video>
+                  <div class="camera-overlay">
+                    <div class="overlay-badge">REC / SPECTRA</div>
+                    <div class="overlay-corner overlay-corner-top"></div>
+                    <div class="overlay-corner overlay-corner-bottom"></div>
+                    <div class="camera-hud">
+                      <span class="hud-chip" id="boothModeLabel">MANUAL MODE</span>
+                      <span class="hud-chip" id="currentSlotLabel">CUT 01</span>
+                    </div>
+                    <div class="countdown" id="countdown">3</div>
+                  </div>
+                  <div class="camera-empty" id="cameraEmpty">
+                    <p>카메라를 시작하거나 기기에 저장된 사진을 불러와 주세요.</p>
+                    <small>모바일에서는 HTTPS 환경에서 카메라 권한을 허용해야 합니다.</small>
+                  </div>
                 </div>
-                <div class="countdown" id="countdown">3</div>
+
+                <div class="controls capture-controls">
+                  <button class="action-button chrome" id="startCameraButton" type="button">카메라 시작</button>
+                  <button class="action-button clear" id="uploadPhotoButton" type="button">사진 불러오기</button>
+                  <input id="photoUploadInput" type="file" accept="image/*" multiple hidden />
+                  <button class="action-button hotpink" id="captureButton" type="button" disabled>1컷 촬영</button>
+                  <button class="action-button violet" id="autoCaptureButton" type="button" disabled>4컷 연속 촬영</button>
+                  <button class="action-button aqua" id="retakeButton" type="button" disabled>선택한 컷 다시찍기</button>
+                  <button class="action-button clear" id="resetButton" type="button">4컷 전체 지우기</button>
+                </div>
               </div>
-              <div class="camera-empty" id="cameraEmpty">
-                <p>카메라를 켜면 여기에서 바로 4컷을 촬영할 수 있어요.</p>
-                <small>브라우저에서 카메라 권한을 허용해 주세요.</small>
-              </div>
+
+              <aside class="capture-review" aria-label="4컷 촬영 결과">
+                <div class="capture-review-heading">
+                  <span>EXPOSURE REVIEW</span>
+                  <strong id="slotStatus">0 / 4 컷 완료</strong>
+                </div>
+                <div class="session-strip" id="sessionStrip" aria-label="촬영 진행 상태"></div>
+                <div class="shooting-note">
+                  <p id="sessionMessage">카메라를 시작하거나 사진을 불러와 주세요.</p>
+                  <small>채워진 컷을 누르면 해당 사진을 다시 촬영하거나 교체할 수 있습니다.</small>
+                </div>
+              </aside>
             </div>
 
-            <div class="controls">
-              <button class="action-button chrome" id="startCameraButton" type="button">
-                카메라 시작
+            <div class="workflow-actions">
+              <button class="action-button clear workflow-back" id="captureBackButton" type="button">이전</button>
+              <button class="action-button chrome workflow-next" id="captureNextButton" type="button" disabled>
+                스티커 꾸미기로 이동
               </button>
-              <button class="action-button hotpink" id="captureButton" type="button" disabled>
-                1컷 촬영
-              </button>
-              <button class="action-button violet" id="autoCaptureButton" type="button" disabled>
-                4컷 연속 촬영
-              </button>
-              <button class="action-button aqua" id="retakeButton" type="button" disabled>
-                현재 컷 다시찍기
-              </button>
-              <button class="action-button clear" id="resetButton" type="button">
-                전체 초기화
-              </button>
-              <button class="action-button lime" id="saveButton" type="button" disabled>
-                PNG 저장
-              </button>
-            </div>
-
-            <div class="shooting-note">
-              <p id="sessionMessage">4칸이 모두 채워지면 저장 버튼이 활성화돼요.</p>
-              <small>카메라는 보통 `localhost` 또는 HTTPS 환경에서 정상 동작합니다.</small>
             </div>
           </article>
+        </section>
 
-          <article class="glass-panel settings-panel">
+        <section class="workflow-stage" data-workflow-step="3" aria-labelledby="stickerStepTitle" hidden>
+          <article class="glass-panel workflow-panel settings-panel">
             <div class="window-bar">
-              <span class="window-title">COMPOSE / FRAME & OBJECT</span>
+              <span class="window-title">STEP 03 / STICKER COMPOSE</span>
               <span class="window-lights"><i></i><i></i><i></i></span>
             </div>
-            <div class="section-heading">
+            <div class="workflow-heading">
               <div>
                 <p class="section-label">COMPOSE</p>
-                <h2>프레임과 오브젝트</h2>
+                <h2 id="stickerStepTitle" tabindex="-1">스티커로 장면을 꾸며보세요</h2>
+                <p>스티커를 추가한 뒤 프레임 위에서 이동하고 크기, 회전, 좌우 반전을 조절할 수 있습니다.</p>
               </div>
-              <div class="status-pill" id="slotStatus">0 / 4 컷 완료</div>
             </div>
 
-            <div class="settings-grid">
-              <section class="settings-block">
-                <div class="settings-header">
-                  <h3>프레임 테마</h3>
-                  <span id="themeSummary">Aurora Veil</span>
-                </div>
-                <div class="theme-options" id="themeOptions"></div>
-              </section>
+            <div class="compose-layout">
+              <div class="sticker-toolbox">
+                <section class="settings-block">
+                  <div class="settings-header">
+                    <h3>스펙트럴 오브젝트</h3>
+                    <span>눌러서 프레임에 추가</span>
+                  </div>
+                  <div class="sticker-options" id="stickerOptions"></div>
+                  <div class="asset-upload-row">
+                    <button class="mini-button" id="clearStickersButton" type="button">스티커 전체 삭제</button>
+                  </div>
+                </section>
+              </div>
+              <div class="workflow-preview-mount" id="previewMountSticker"></div>
+            </div>
 
-              <section class="settings-block">
-                <div class="settings-header">
-                  <h3>스펙트럴 오브젝트</h3>
-                  <span>클릭해서 추가해주세요</span>
-                </div>
-                <div class="sticker-options" id="stickerOptions"></div>
-                <div class="asset-upload-row">
-                  <button class="mini-button" id="clearStickersButton" type="button">스티커 전체 삭제</button>
-                </div>
-              </section>
-
-              <section class="settings-block sticker-control-block">
-                <div class="settings-header">
-                  <h3>선택한 스티커 조정</h3>
-                  <span id="selectedStickerLabel">선택 없음</span>
-                </div>
-                <div class="sticker-controls">
-                  <label>
-                    크기
-                    <input id="stickerScaleInput" type="range" min="0.45" max="2.6" step="0.05" value="1" />
-                  </label>
-                  <label>
-                    회전
-                    <input id="stickerRotationInput" type="range" min="-60" max="60" step="1" value="0" />
-                  </label>
-                </div>
-                <div class="sticker-toggle-row">
-                  <button class="mini-button" id="stickerFlipButton" type="button">좌우 반전</button>
-                </div>
-                <p class="helper-text compact">스티커는 미리보기 위에서 직접 드래그해서 이동할 수 있어요.</p>
-                <button class="mini-button danger" id="deleteStickerButton" type="button">
-                  선택한 스티커 삭제
-                </button>
-              </section>
+            <div class="workflow-actions">
+              <button class="action-button clear workflow-back" id="stickerBackButton" type="button">이전</button>
+              <button class="action-button chrome workflow-next" id="stickerNextButton" type="button">최종 미리보기</button>
             </div>
           </article>
-        </div>
+        </section>
 
-        <div class="preview-column">
-          <article class="glass-panel strip-panel">
+        <section class="workflow-stage" data-workflow-step="4" aria-labelledby="previewStepTitle" hidden>
+          <article class="glass-panel workflow-panel final-preview-panel">
             <div class="window-bar">
-              <span class="window-title">OUTPUT / FOUR EXPOSURES</span>
+              <span class="window-title">STEP 04 / FINAL PREVIEW</span>
               <span class="window-lights"><i></i><i></i><i></i></span>
             </div>
-            <div class="section-heading">
+            <div class="workflow-heading centered-heading">
               <div>
-                <p class="section-label">OUTPUT</p>
-                <h2>4컷 프레임 미리보기</h2>
+                <p class="section-label">PREVIEW</p>
+                <h2 id="previewStepTitle" tabindex="-1">완성된 네컷을 확인하세요</h2>
+                <p>사진, 프레임, 스티커 배치를 확인한 뒤 저장 단계로 이동합니다.</p>
               </div>
-              <div class="status-pill" id="frameStatus">기본 프레임 사용 중</div>
             </div>
-
-            <div class="preview-note">
-              <span>컷을 선택해 다시 촬영하거나 오브젝트를 드래그해 프레임 위에 배치할 수 있습니다.</span>
-            </div>
-
-            <div class="strip-preview theme-aurora" id="stripPreview">
-              <div class="strip-inner" id="stripInner">
-                <div class="strip-shine"></div>
-                <div class="strip-cosmos" id="stripCosmos" aria-hidden="true"></div>
-                <div class="strip-topper">
-                  <span id="stripThemeName">Aurora Veil</span>
-                  <span>PSR / SERIES 04</span>
-                </div>
-
-                <div class="strip-slots" id="stripSlots"></div>
-
-                <div class="sticker-layer" id="stickerLayer"></div>
-
-                <div class="strip-footer">
-                  <span>CELESTIAL IMAGE ARCHIVE</span>
-                  <span id="footerTimestamp">READY TO SHOOT</span>
-                </div>
-              </div>
+            <div class="workflow-preview-mount final-preview-mount" id="previewMountFinal"></div>
+            <div class="workflow-actions">
+              <button class="action-button clear workflow-back" id="previewBackButton" type="button">꾸미기로 돌아가기</button>
+              <button class="action-button chrome workflow-next" id="previewNextButton" type="button">저장 단계로 이동</button>
             </div>
           </article>
+        </section>
 
-          <article class="glass-panel gallery-panel">
+        <section class="workflow-stage" data-workflow-step="5" aria-labelledby="saveStepTitle" hidden>
+          <article class="glass-panel workflow-panel save-panel">
             <div class="window-bar">
-              <span class="window-title">ARCHIVE / RECENT OUTPUTS</span>
+              <span class="window-title">STEP 05 / PNG ARCHIVE</span>
               <span class="window-lights"><i></i><i></i><i></i></span>
             </div>
-            <div class="section-heading">
+            <div class="workflow-heading centered-heading">
               <div>
-                <p class="section-label">ARCHIVE</p>
-                <h2>최근 저장한 이미지</h2>
+                <p class="section-label">SAVE</p>
+                <h2 id="saveStepTitle" tabindex="-1">완성된 이미지를 저장하세요</h2>
+                <p>PNG 파일로 내려받은 결과는 아래 최근 저장 목록에서도 다시 확인할 수 있습니다.</p>
               </div>
             </div>
-            <div class="saved-gallery" id="savedGallery">
-              <div class="empty-gallery">
-                <p>아직 저장된 포토 스트립이 없어요.</p>
-                <small>4컷을 완성하고 저장하면 여기에 쌓여요.</small>
+
+            <div class="save-layout">
+              <div class="workflow-preview-mount save-preview-mount" id="previewMountSave"></div>
+              <div class="save-command-area">
+                <span class="save-format">PNG · 960 × AUTO · FOUR EXPOSURES</span>
+                <button class="action-button lime save-primary" id="saveButton" type="button" disabled>PNG 저장</button>
+                <button class="mini-button" id="restartButton" type="button">새로운 네컷 만들기</button>
               </div>
+            </div>
+
+            <section class="archive-section">
+              <div class="section-heading">
+                <div>
+                  <p class="section-label">ARCHIVE</p>
+                  <h2>최근 저장한 이미지</h2>
+                </div>
+              </div>
+              <div class="saved-gallery" id="savedGallery">
+                <div class="empty-gallery">
+                  <p>아직 저장된 포토 스트립이 없어요.</p>
+                  <small>PNG 저장을 누르면 이곳에 기록됩니다.</small>
+                </div>
+              </div>
+            </section>
+
+            <div class="workflow-actions">
+              <button class="action-button clear workflow-back" id="saveBackButton" type="button">미리보기로 돌아가기</button>
             </div>
           </article>
+        </section>
+
+        <div class="shared-preview-module" id="sharedPreviewModule">
+          <div class="shared-preview-heading">
+            <div>
+              <p class="section-label">FOUR EXPOSURES</p>
+              <h3>4컷 프레임</h3>
+            </div>
+            <div class="status-pill" id="frameStatus">기본 프레임 사용 중</div>
+          </div>
+          <div class="strip-preview theme-aurora" id="stripPreview">
+            <div class="strip-inner" id="stripInner">
+              <div class="strip-shine"></div>
+              <div class="strip-cosmos" id="stripCosmos" aria-hidden="true"></div>
+              <div class="strip-topper">
+                <span id="stripThemeName">Aurora Veil</span>
+                <span>PSR / SERIES 04</span>
+              </div>
+              <div class="strip-slots" id="stripSlots"></div>
+              <div class="sticker-layer" id="stickerLayer"></div>
+              <div class="strip-footer">
+                <span>CELESTIAL IMAGE ARCHIVE</span>
+                <span id="footerTimestamp">READY TO SHOOT</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <footer class="site-credit">음원 출처 : 전주정보문화산업진흥원, Fantasy_Universe_mysterious_Night_Forest_5.1</footer>
+      <footer class="site-credit">
+        음원 출처 : Repemtance_Broken nail_Harp Piano_T82_5.1
+        <br/>
+        <br/>포토부스에 사용된 캐릭터의 저작권은 "혜류뮴"에 있습니다. 무단도용, AI 학습 등을 금지합니다. 
+        <br/>적발될 경우 저작권 법에 의한 처벌을 받으실 수 있습니다. 
+      </footer>
     </main>
 
     <template id="themeButtonTemplate">

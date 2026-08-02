@@ -13,7 +13,7 @@ const BACKGROUND_VIDEO_CROSSFADE_MS = Math.round(
   (BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS / BACKGROUND_VIDEO_RATE) * 1000,
 );
 const BACKGROUND_MUSIC_VOLUME = 0.38;
-const MUSIC_UNLOCK_EVENTS = ["pointerdown", "touchstart", "keydown"];
+const MEDIA_UNLOCK_EVENTS = ["pointerdown", "touchstart", "click", "keydown"];
 const REDUCED_MOTION_QUERY = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 const themes = [
@@ -200,6 +200,8 @@ function createStickerAssetLibrary() {
 }
 
 const state = {
+  currentWorkflowStep: 1,
+  maxUnlockedWorkflowStep: 1,
   stream: null,
   isCountingDown: false,
   isAutoSession: false,
@@ -218,11 +220,29 @@ const state = {
   backgroundVideoCrossfading: false,
   backgroundVideoMonitor: null,
   backgroundVideoTransitionTimer: null,
+  backgroundVideoUnlockHandler: null,
+  backgroundVideoVisibilityHandler: null,
   backgroundMusicDesired: true,
   backgroundMusicUnlockHandler: null,
 };
 
 const refs = {
+  workflowShell: document.getElementById("workflowShell"),
+  workflowStages: Array.from(document.querySelectorAll("[data-workflow-step]")),
+  workflowProgressItems: Array.from(document.querySelectorAll("[data-workflow-target]")),
+  sharedPreviewModule: document.getElementById("sharedPreviewModule"),
+  previewMountSticker: document.getElementById("previewMountSticker"),
+  previewMountFinal: document.getElementById("previewMountFinal"),
+  previewMountSave: document.getElementById("previewMountSave"),
+  frameNextButton: document.getElementById("frameNextButton"),
+  captureBackButton: document.getElementById("captureBackButton"),
+  captureNextButton: document.getElementById("captureNextButton"),
+  stickerBackButton: document.getElementById("stickerBackButton"),
+  stickerNextButton: document.getElementById("stickerNextButton"),
+  previewBackButton: document.getElementById("previewBackButton"),
+  previewNextButton: document.getElementById("previewNextButton"),
+  saveBackButton: document.getElementById("saveBackButton"),
+  restartButton: document.getElementById("restartButton"),
   camera: document.getElementById("camera"),
   cameraStage: document.getElementById("cameraStage"),
   cameraStatus: document.getElementById("cameraStatus"),
@@ -232,6 +252,8 @@ const refs = {
   sessionMessage: document.getElementById("sessionMessage"),
   sessionStrip: document.getElementById("sessionStrip"),
   startCameraButton: document.getElementById("startCameraButton"),
+  uploadPhotoButton: document.getElementById("uploadPhotoButton"),
+  photoUploadInput: document.getElementById("photoUploadInput"),
   captureButton: document.getElementById("captureButton"),
   autoCaptureButton: document.getElementById("autoCaptureButton"),
   retakeButton: document.getElementById("retakeButton"),
@@ -254,11 +276,6 @@ const refs = {
   stickerOptions: document.getElementById("stickerOptions"),
   stickerLayer: document.getElementById("stickerLayer"),
   clearStickersButton: document.getElementById("clearStickersButton"),
-  stickerScaleInput: document.getElementById("stickerScaleInput"),
-  stickerRotationInput: document.getElementById("stickerRotationInput"),
-  stickerFlipButton: document.getElementById("stickerFlipButton"),
-  selectedStickerLabel: document.getElementById("selectedStickerLabel"),
-  deleteStickerButton: document.getElementById("deleteStickerButton"),
   savedGallery: document.getElementById("savedGallery"),
   themeButtonTemplate: document.getElementById("themeButtonTemplate"),
   stickerButtonTemplate: document.getElementById("stickerButtonTemplate"),
@@ -326,12 +343,88 @@ function getAllStickerAssets() {
   return state.presetStickers;
 }
 
-function getSelectedSticker() {
-  return state.stickers.find((sticker) => sticker.id === state.selectedStickerId) || null;
-}
-
 function getFilledCount() {
   return state.capturedPhotos.filter(Boolean).length;
+}
+
+function getPreviewMount(step) {
+  const mounts = {
+    3: refs.previewMountSticker,
+    4: refs.previewMountFinal,
+    5: refs.previewMountSave,
+  };
+
+  return mounts[step] || null;
+}
+
+function updateWorkflowControls() {
+  const isComplete = getFilledCount() === CUT_COUNT;
+  const isBusy = state.isCountingDown || state.isAutoSession;
+
+  refs.captureNextButton.disabled = !isComplete || isBusy;
+  refs.stickerNextButton.disabled = !isComplete;
+  refs.previewNextButton.disabled = !isComplete;
+}
+
+function renderWorkflow() {
+  refs.workflowStages.forEach((stage) => {
+    const step = Number(stage.dataset.workflowStep);
+    const isActive = step === state.currentWorkflowStep;
+    stage.hidden = !isActive;
+    stage.classList.toggle("active", isActive);
+  });
+
+  refs.workflowProgressItems.forEach((item) => {
+    const step = Number(item.dataset.workflowTarget);
+    const isActive = step === state.currentWorkflowStep;
+    item.disabled = step > state.maxUnlockedWorkflowStep;
+    item.classList.toggle("active", isActive);
+    item.classList.toggle("complete", step < state.currentWorkflowStep);
+    item.toggleAttribute("aria-current", isActive);
+    if (isActive) {
+      item.setAttribute("aria-current", "step");
+    }
+  });
+
+  const previewMount = getPreviewMount(state.currentWorkflowStep);
+  if (previewMount && refs.sharedPreviewModule.parentElement !== previewMount) {
+    previewMount.appendChild(refs.sharedPreviewModule);
+  }
+
+  document.body.dataset.workflowStep = String(state.currentWorkflowStep);
+  updateWorkflowControls();
+}
+
+function goToWorkflowStep(step, options = {}) {
+  const targetStep = clamp(Number(step), 1, 5);
+  const isSequentialAdvance = targetStep === state.currentWorkflowStep + 1;
+  const isUnlocked = targetStep <= state.maxUnlockedWorkflowStep;
+
+  if (!options.force && !isUnlocked && !isSequentialAdvance) {
+    return;
+  }
+
+  if (targetStep >= 3 && getFilledCount() !== CUT_COUNT) {
+    alert("네 컷을 모두 채운 뒤 다음 단계로 이동해 주세요.");
+    return;
+  }
+
+  if (state.currentWorkflowStep === 2 && targetStep !== 2) {
+    stopCamera();
+  }
+
+  state.currentWorkflowStep = targetStep;
+  state.maxUnlockedWorkflowStep = Math.max(state.maxUnlockedWorkflowStep, targetStep);
+  state.selectedStickerId = null;
+  renderPreviewShell();
+  renderWorkflow();
+
+  const activeHeading = document.querySelector(`[data-workflow-step="${targetStep}"] h2`);
+  activeHeading?.focus({ preventScroll: true });
+  refs.workflowShell.scrollIntoView({
+    behavior: REDUCED_MOTION_QUERY.matches ? "auto" : "smooth",
+    block: "start",
+  });
 }
 
 function getNextEmptySlot(startIndex = 0) {
@@ -544,6 +637,32 @@ function initializeBackdrop() {
   window.addEventListener("resize", resizeBackdropCanvas);
 }
 
+function removeBackgroundVideoUnlockListeners() {
+  if (!state.backgroundVideoUnlockHandler) {
+    return;
+  }
+
+  MEDIA_UNLOCK_EVENTS.forEach((eventName) => {
+    document.removeEventListener(eventName, state.backgroundVideoUnlockHandler, true);
+  });
+  state.backgroundVideoUnlockHandler = null;
+}
+
+async function attemptBackgroundVideoPlayback() {
+  const activeVideo = refs.cosmicBackgroundVideos[state.backgroundActiveVideoIndex];
+  if (!activeVideo) {
+    return;
+  }
+
+  try {
+    await activeVideo.play();
+    document.body.classList.add("video-background-ready");
+    removeBackgroundVideoUnlockListeners();
+  } catch (error) {
+    // Mobile browsers may defer playback until the first touch.
+  }
+}
+
 function initializeBackgroundVideo() {
   const videos = refs.cosmicBackgroundVideos;
   if (videos.length < 2) {
@@ -551,17 +670,18 @@ function initializeBackgroundVideo() {
   }
 
   videos.forEach((video) => {
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    video.disablePictureInPicture = true;
     video.playbackRate = BACKGROUND_VIDEO_RATE;
+    video.setAttribute("muted", "");
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
   });
 
   const activeVideo = videos[state.backgroundActiveVideoIndex];
-  const revealVideo = () => {
-    document.body.classList.add("video-background-ready");
-
-    if (REDUCED_MOTION_QUERY.matches) {
-      videos.forEach((video) => video.pause());
-    }
-  };
+  const revealVideo = () => document.body.classList.add("video-background-ready");
 
   if (activeVideo.readyState >= 2) {
     revealVideo();
@@ -569,51 +689,59 @@ function initializeBackgroundVideo() {
     activeVideo.addEventListener("loadeddata", revealVideo, { once: true });
   }
 
-  if (!REDUCED_MOTION_QUERY.matches) {
-    activeVideo.play().catch(() => {
-      document.body.classList.remove("video-background-ready");
-    });
+  state.backgroundVideoUnlockHandler = () => attemptBackgroundVideoPlayback();
+  MEDIA_UNLOCK_EVENTS.forEach((eventName) => {
+    document.addEventListener(eventName, state.backgroundVideoUnlockHandler, true);
+  });
 
-    state.backgroundVideoMonitor = window.setInterval(() => {
-      const currentVideo = videos[state.backgroundActiveVideoIndex];
-      if (
-        state.backgroundVideoCrossfading ||
-        !Number.isFinite(currentVideo.duration) ||
-        currentVideo.duration <= BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS
-      ) {
-        return;
-      }
+  state.backgroundVideoVisibilityHandler = () => {
+    if (document.visibilityState === "visible") {
+      attemptBackgroundVideoPlayback();
+    }
+  };
+  document.addEventListener("visibilitychange", state.backgroundVideoVisibilityHandler);
+  attemptBackgroundVideoPlayback();
 
-      const crossfadeStartsAt = currentVideo.duration - BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS;
-      if (currentVideo.currentTime < crossfadeStartsAt) {
-        return;
-      }
+  state.backgroundVideoMonitor = window.setInterval(() => {
+    const currentVideo = videos[state.backgroundActiveVideoIndex];
+    if (
+      state.backgroundVideoCrossfading ||
+      !Number.isFinite(currentVideo.duration) ||
+      currentVideo.duration <= BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS
+    ) {
+      return;
+    }
 
-      const nextVideoIndex = state.backgroundActiveVideoIndex === 0 ? 1 : 0;
-      const nextVideo = videos[nextVideoIndex];
-      state.backgroundVideoCrossfading = true;
-      nextVideo.currentTime = 0;
-      nextVideo.playbackRate = BACKGROUND_VIDEO_RATE;
+    const crossfadeStartsAt = currentVideo.duration - BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS;
+    if (currentVideo.currentTime < crossfadeStartsAt) {
+      return;
+    }
 
-      nextVideo
-        .play()
-        .then(() => {
-          nextVideo.classList.add("is-visible");
-          currentVideo.classList.remove("is-visible");
+    const nextVideoIndex = state.backgroundActiveVideoIndex === 0 ? 1 : 0;
+    const nextVideo = videos[nextVideoIndex];
+    state.backgroundVideoCrossfading = true;
+    nextVideo.loop = false;
+    nextVideo.currentTime = 0;
+    nextVideo.playbackRate = BACKGROUND_VIDEO_RATE;
 
-          state.backgroundVideoTransitionTimer = window.setTimeout(() => {
-            currentVideo.pause();
-            currentVideo.currentTime = 0;
-            state.backgroundActiveVideoIndex = nextVideoIndex;
-            state.backgroundVideoCrossfading = false;
-          }, BACKGROUND_VIDEO_CROSSFADE_MS + 120);
-        })
-        .catch(() => {
+    nextVideo
+      .play()
+      .then(() => {
+        nextVideo.classList.add("is-visible");
+        currentVideo.classList.remove("is-visible");
+
+        state.backgroundVideoTransitionTimer = window.setTimeout(() => {
+          currentVideo.pause();
+          currentVideo.currentTime = 0;
+          state.backgroundActiveVideoIndex = nextVideoIndex;
           state.backgroundVideoCrossfading = false;
-          currentVideo.loop = true;
-        });
-    }, 160);
-  }
+        }, BACKGROUND_VIDEO_CROSSFADE_MS + 120);
+      })
+      .catch(() => {
+        state.backgroundVideoCrossfading = false;
+        currentVideo.loop = true;
+      });
+  }, 160);
 }
 
 function removeMusicUnlockListeners() {
@@ -621,7 +749,7 @@ function removeMusicUnlockListeners() {
     return;
   }
 
-  MUSIC_UNLOCK_EVENTS.forEach((eventName) => {
+  MEDIA_UNLOCK_EVENTS.forEach((eventName) => {
     document.removeEventListener(eventName, state.backgroundMusicUnlockHandler, true);
   });
   state.backgroundMusicUnlockHandler = null;
@@ -674,7 +802,7 @@ function initializeBackgroundMusic() {
     attemptBackgroundMusicPlayback();
   };
 
-  MUSIC_UNLOCK_EVENTS.forEach((eventName) => {
+  MEDIA_UNLOCK_EVENTS.forEach((eventName) => {
     document.addEventListener(eventName, state.backgroundMusicUnlockHandler, true);
   });
 
@@ -870,7 +998,21 @@ function renderSessionStrip() {
     item.className = "session-dot";
     item.classList.toggle("filled", Boolean(photo));
     item.classList.toggle("active", index === state.activeSlotIndex);
-    item.innerHTML = `<span>CUT ${String(index + 1).padStart(2, "0")}</span><small>${photo ? "DONE" : "READY"}</small>`;
+    const preview = document.createElement("span");
+    preview.className = "session-thumb";
+    if (photo) {
+      const image = document.createElement("img");
+      image.src = photo;
+      image.alt = `${index + 1}번째 촬영 결과`;
+      preview.appendChild(image);
+    } else {
+      preview.textContent = String(index + 1).padStart(2, "0");
+    }
+
+    const meta = document.createElement("span");
+    meta.className = "session-dot-meta";
+    meta.innerHTML = `<strong>CUT ${String(index + 1).padStart(2, "0")}</strong><small>${photo ? "DONE" : "READY"}</small>`;
+    item.append(preview, meta);
     item.addEventListener("click", () => {
       state.activeSlotIndex = index;
       state.selectedStickerId = null;
@@ -915,6 +1057,37 @@ function renderStripSlots() {
   });
 }
 
+function applyStickerTransform(element, sticker) {
+  element.style.left = `${sticker.x * 100}%`;
+  element.style.top = `${sticker.y * 100}%`;
+  element.style.width = `${STICKER_BASE_WIDTH_RATIO * sticker.scale * 100}%`;
+  element.style.transform = `translate(-50%, -50%) rotate(${sticker.rotation}deg)`;
+
+  const image = element.querySelector(".sticker-image");
+  if (image) {
+    image.style.transform = `scaleX(${sticker.mirrored ? -1 : 1})`;
+  }
+}
+
+function createStickerHandle(className, label, glyph) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `sticker-handle ${className}`;
+  button.setAttribute("aria-label", label);
+  button.title = label;
+  button.textContent = glyph;
+  button.addEventListener("pointerdown", (event) => event.stopPropagation());
+  button.addEventListener("click", (event) => event.stopPropagation());
+  return button;
+}
+
+function selectStickerInLayer(stickerId) {
+  state.selectedStickerId = stickerId;
+  refs.stickerLayer.querySelectorAll(".sticker-item").forEach((element) => {
+    element.classList.toggle("selected", element.dataset.stickerId === stickerId);
+  });
+}
+
 function renderStickerLayer() {
   refs.stickerLayer.innerHTML = "";
 
@@ -922,52 +1095,53 @@ function renderStickerLayer() {
     const item = document.createElement("div");
     item.className = "sticker-item";
     item.dataset.stickerId = sticker.id;
-    item.style.left = `${sticker.x * 100}%`;
-    item.style.top = `${sticker.y * 100}%`;
-    item.style.width = `${STICKER_BASE_WIDTH_RATIO * sticker.scale * 100}%`;
-    item.style.transform = `translate(-50%, -50%) rotate(${sticker.rotation}deg) scaleX(${sticker.mirrored ? -1 : 1})`;
     item.classList.toggle("selected", sticker.id === state.selectedStickerId);
 
     const image = document.createElement("img");
+    image.className = "sticker-image";
     image.src = sticker.dataUrl;
     image.alt = sticker.label;
-    item.appendChild(image);
+
+    const controls = document.createElement("div");
+    controls.className = "sticker-transform-controls";
+
+    const deleteHandle = createStickerHandle("sticker-delete-handle", "스티커 삭제", "×");
+    deleteHandle.addEventListener("click", () => deleteStickerById(sticker.id));
+
+    const flipHandle = createStickerHandle("sticker-flip-handle", "스티커 좌우 반전", "↔");
+    flipHandle.addEventListener("click", () => toggleStickerMirror(sticker.id));
+
+    const rotateHandle = createStickerHandle("sticker-rotate-handle", "드래그해서 회전", "↻");
+    rotateHandle.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      startStickerRotate(event, sticker.id, item);
+    });
+
+    const scaleHandle = createStickerHandle("sticker-scale-handle", "드래그해서 크기 조절", "↘");
+    scaleHandle.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      startStickerScale(event, sticker.id, item);
+    });
+
+    controls.append(deleteHandle, flipHandle, rotateHandle, scaleHandle);
+    item.append(image, controls);
+    applyStickerTransform(item, sticker);
 
     item.addEventListener("click", (event) => {
       event.stopPropagation();
-      state.selectedStickerId = sticker.id;
-      renderStickerLayer();
-      renderStickerControls();
+      selectStickerInLayer(sticker.id);
     });
 
     item.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && event.button !== 0) {
+        return;
+      }
       event.preventDefault();
-      startStickerDrag(event, sticker.id);
+      startStickerDrag(event, sticker.id, item);
     });
 
     refs.stickerLayer.appendChild(item);
   });
-}
-
-function renderStickerControls() {
-  const selectedSticker = getSelectedSticker();
-  const hasSelection = Boolean(selectedSticker);
-
-  refs.selectedStickerLabel.textContent = hasSelection ? selectedSticker.label : "선택 없음";
-  refs.stickerScaleInput.disabled = !hasSelection;
-  refs.stickerRotationInput.disabled = !hasSelection;
-  refs.stickerFlipButton.disabled = !hasSelection;
-  refs.deleteStickerButton.disabled = !hasSelection;
-
-  if (hasSelection) {
-    refs.stickerScaleInput.value = String(selectedSticker.scale);
-    refs.stickerRotationInput.value = String(selectedSticker.rotation);
-    refs.stickerFlipButton.textContent = selectedSticker.mirrored ? "좌우 반전 해제" : "좌우 반전";
-  } else {
-    refs.stickerScaleInput.value = "1";
-    refs.stickerRotationInput.value = "0";
-    refs.stickerFlipButton.textContent = "좌우 반전";
-  }
 }
 
 function renderSavedGallery() {
@@ -1045,6 +1219,7 @@ function updateControlState() {
   refs.retakeButton.disabled = !activePhoto || isBusy;
   refs.saveButton.disabled = filledCount !== CUT_COUNT || isBusy;
   refs.startCameraButton.disabled = state.isCountingDown;
+  updateWorkflowControls();
 }
 
 function renderPreviewShell() {
@@ -1064,7 +1239,6 @@ function renderPreviewShell() {
   renderSessionStrip();
   renderStripSlots();
   renderStickerLayer();
-  renderStickerControls();
   updateControlState();
 }
 
@@ -1073,6 +1247,7 @@ function renderAll() {
   renderStickerOptions();
   renderPreviewShell();
   renderSavedGallery();
+  renderWorkflow();
 }
 
 async function startCamera() {
@@ -1132,6 +1307,41 @@ async function runCountdown() {
   updateControlState();
 }
 
+function drawImageCover(context, source, sourceWidth, sourceHeight, targetWidth, targetHeight, mirror = false) {
+  const sourceRatio = sourceWidth / sourceHeight;
+  const targetRatio = targetWidth / targetHeight;
+  let cropX = 0;
+  let cropY = 0;
+  let cropWidth = sourceWidth;
+  let cropHeight = sourceHeight;
+
+  if (sourceRatio > targetRatio) {
+    cropWidth = sourceHeight * targetRatio;
+    cropX = (sourceWidth - cropWidth) / 2;
+  } else {
+    cropHeight = sourceWidth / targetRatio;
+    cropY = (sourceHeight - cropHeight) / 2;
+  }
+
+  context.save();
+  if (mirror) {
+    context.translate(targetWidth, 0);
+    context.scale(-1, 1);
+  }
+  context.drawImage(
+    source,
+    cropX,
+    cropY,
+    cropWidth,
+    cropHeight,
+    0,
+    0,
+    targetWidth,
+    targetHeight,
+  );
+  context.restore();
+}
+
 function captureCurrentFrame() {
   if (!refs.camera.videoWidth || !refs.camera.videoHeight) {
     throw new Error("카메라 프레임을 아직 사용할 수 없습니다.");
@@ -1145,13 +1355,70 @@ function captureCurrentFrame() {
   canvas.width = width;
   canvas.height = height;
 
-  context.save();
-  context.translate(width, 0);
-  context.scale(-1, 1);
-  context.drawImage(refs.camera, 0, 0, width, height);
-  context.restore();
+  drawImageCover(
+    context,
+    refs.camera,
+    refs.camera.videoWidth,
+    refs.camera.videoHeight,
+    width,
+    height,
+    true,
+  );
 
   return canvas.toDataURL("image/png");
+}
+
+async function normalizeUploadedPhoto(file) {
+  const sourceUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await loadImage(sourceUrl);
+    const canvas = document.createElement("canvas");
+    const width = 960;
+    const height = 1200;
+    const context = canvas.getContext("2d");
+    canvas.width = width;
+    canvas.height = height;
+    drawImageCover(context, image, image.naturalWidth, image.naturalHeight, width, height);
+    return canvas.toDataURL("image/jpeg", 0.94);
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
+async function handlePhotoUpload(event) {
+  const files = Array.from(event.target.files || []).filter((file) => file.type.startsWith("image/"));
+  event.target.value = "";
+
+  if (!files.length || state.isCountingDown || state.isAutoSession) {
+    return;
+  }
+
+  const emptySlots = state.capturedPhotos
+    .map((photo, index) => (photo ? -1 : index))
+    .filter((index) => index !== -1);
+  const targets = emptySlots.length
+    ? [state.activeSlotIndex, ...emptySlots].filter(
+        (index, position, list) => !state.capturedPhotos[index] && list.indexOf(index) === position,
+      )
+    : [state.activeSlotIndex];
+
+  try {
+    const uploadCount = Math.min(files.length, targets.length);
+    for (let index = 0; index < uploadCount; index += 1) {
+      state.capturedPhotos[targets[index]] = await normalizeUploadedPhoto(files[index]);
+      state.activeSlotIndex = targets[index];
+    }
+
+    const nextEmptySlot = getNextEmptySlot(state.activeSlotIndex + 1);
+    if (nextEmptySlot !== -1) {
+      state.activeSlotIndex = nextEmptySlot;
+    }
+    renderPreviewShell();
+  } catch (error) {
+    console.error(error);
+    alert("사진을 불러오지 못했어요. 다른 이미지로 다시 시도해 주세요.");
+  }
 }
 
 function handleRetake() {
@@ -1168,6 +1435,15 @@ function handleReset() {
   state.frameLayout = createFrameLayout(getSelectedTheme());
   refs.countdown.classList.remove("visible");
   renderPreviewShell();
+}
+
+function restartWorkflow() {
+  stopCamera();
+  handleReset();
+  state.currentWorkflowStep = 1;
+  state.maxUnlockedWorkflowStep = 1;
+  renderWorkflow();
+  refs.workflowShell.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function captureIntoSlot(slotIndex) {
@@ -1267,83 +1543,110 @@ function addStickerToCanvas(asset) {
   state.stickers.push(sticker);
   state.selectedStickerId = sticker.id;
   renderStickerLayer();
-  renderStickerControls();
 }
 
-function startStickerDrag(event, stickerId) {
+function bindStickerPointerGesture(event, update) {
+  const pointerId = event.pointerId;
+
+  function handleMove(moveEvent) {
+    if (moveEvent.pointerId !== pointerId) {
+      return;
+    }
+    moveEvent.preventDefault();
+    update(moveEvent);
+  }
+
+  function handleEnd(endEvent) {
+    if (endEvent.pointerId !== pointerId) {
+      return;
+    }
+    window.removeEventListener("pointermove", handleMove);
+    window.removeEventListener("pointerup", handleEnd);
+    window.removeEventListener("pointercancel", handleEnd);
+  }
+
+  window.addEventListener("pointermove", handleMove, { passive: false });
+  window.addEventListener("pointerup", handleEnd);
+  window.addEventListener("pointercancel", handleEnd);
+}
+
+function startStickerDrag(event, stickerId, element) {
   const sticker = state.stickers.find((item) => item.id === stickerId);
   if (!sticker) {
     return;
   }
 
-  state.selectedStickerId = stickerId;
-  renderStickerControls();
+  selectStickerInLayer(stickerId);
 
   const stageRect = refs.stripInner.getBoundingClientRect();
-  const pointerX = (event.clientX - stageRect.left) / stageRect.width;
-  const pointerY = (event.clientY - stageRect.top) / stageRect.height;
-  const offsetX = sticker.x - pointerX;
-  const offsetY = sticker.y - pointerY;
+  const startClientX = event.clientX;
+  const startClientY = event.clientY;
+  const startX = sticker.x;
+  const startY = sticker.y;
 
-  function updatePosition(moveEvent) {
-    const nextX = (moveEvent.clientX - stageRect.left) / stageRect.width + offsetX;
-    const nextY = (moveEvent.clientY - stageRect.top) / stageRect.height + offsetY;
-    sticker.x = clamp(nextX, 0.06, 0.94);
-    sticker.y = clamp(nextY, 0.04, 0.96);
-    renderStickerLayer();
-  }
-
-  function stopDragging() {
-    window.removeEventListener("pointermove", updatePosition);
-    window.removeEventListener("pointerup", stopDragging);
-    window.removeEventListener("pointercancel", stopDragging);
-  }
-
-  window.addEventListener("pointermove", updatePosition);
-  window.addEventListener("pointerup", stopDragging);
-  window.addEventListener("pointercancel", stopDragging);
+  bindStickerPointerGesture(event, (moveEvent) => {
+    sticker.x = clamp(startX + (moveEvent.clientX - startClientX) / stageRect.width, 0.04, 0.96);
+    sticker.y = clamp(startY + (moveEvent.clientY - startClientY) / stageRect.height, 0.03, 0.97);
+    applyStickerTransform(element, sticker);
+  });
 }
 
-function updateSelectedStickerScale(value) {
-  const sticker = getSelectedSticker();
+function startStickerScale(event, stickerId, element) {
+  const sticker = state.stickers.find((item) => item.id === stickerId);
   if (!sticker) {
     return;
   }
 
-  sticker.scale = Number(value);
-  renderStickerLayer();
+  selectStickerInLayer(stickerId);
+  const stageRect = refs.stripInner.getBoundingClientRect();
+  const centerX = stageRect.left + sticker.x * stageRect.width;
+  const centerY = stageRect.top + sticker.y * stageRect.height;
+  const startDistance = Math.max(1, Math.hypot(event.clientX - centerX, event.clientY - centerY));
+  const startScale = sticker.scale;
+
+  bindStickerPointerGesture(event, (moveEvent) => {
+    const distance = Math.hypot(moveEvent.clientX - centerX, moveEvent.clientY - centerY);
+    sticker.scale = clamp(startScale * (distance / startDistance), 0.45, 2.6);
+    applyStickerTransform(element, sticker);
+  });
 }
 
-function updateSelectedStickerRotation(value) {
-  const sticker = getSelectedSticker();
+function startStickerRotate(event, stickerId, element) {
+  const sticker = state.stickers.find((item) => item.id === stickerId);
   if (!sticker) {
     return;
   }
 
-  sticker.rotation = Number(value);
-  renderStickerLayer();
+  selectStickerInLayer(stickerId);
+  const stageRect = refs.stripInner.getBoundingClientRect();
+  const centerX = stageRect.left + sticker.x * stageRect.width;
+  const centerY = stageRect.top + sticker.y * stageRect.height;
+  const startAngle = Math.atan2(event.clientY - centerY, event.clientX - centerX);
+  const startRotation = sticker.rotation;
+
+  bindStickerPointerGesture(event, (moveEvent) => {
+    const angle = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX);
+    const delta = ((angle - startAngle) * 180) / Math.PI;
+    sticker.rotation = Math.round(((startRotation + delta + 540) % 360) - 180);
+    applyStickerTransform(element, sticker);
+  });
 }
 
-function toggleSelectedStickerMirror() {
-  const sticker = getSelectedSticker();
+function toggleStickerMirror(stickerId) {
+  const sticker = state.stickers.find((item) => item.id === stickerId);
   if (!sticker) {
     return;
   }
 
   sticker.mirrored = !sticker.mirrored;
+  state.selectedStickerId = stickerId;
   renderStickerLayer();
-  renderStickerControls();
 }
 
-function deleteSelectedSticker() {
-  if (!state.selectedStickerId) {
-    return;
-  }
-
-  state.stickers = state.stickers.filter((sticker) => sticker.id !== state.selectedStickerId);
+function deleteStickerById(stickerId) {
+  state.stickers = state.stickers.filter((sticker) => sticker.id !== stickerId);
   state.selectedStickerId = null;
   renderStickerLayer();
-  renderStickerControls();
 }
 
 function saveStripRecord(item) {
@@ -1818,7 +2121,21 @@ function restoreSavedStrips() {
 
 function bindEvents() {
   refs.musicToggleButton.addEventListener("click", toggleBackgroundMusic);
+  refs.frameNextButton.addEventListener("click", () => goToWorkflowStep(2));
+  refs.captureBackButton.addEventListener("click", () => goToWorkflowStep(1));
+  refs.captureNextButton.addEventListener("click", () => goToWorkflowStep(3));
+  refs.stickerBackButton.addEventListener("click", () => goToWorkflowStep(2));
+  refs.stickerNextButton.addEventListener("click", () => goToWorkflowStep(4));
+  refs.previewBackButton.addEventListener("click", () => goToWorkflowStep(3));
+  refs.previewNextButton.addEventListener("click", () => goToWorkflowStep(5));
+  refs.saveBackButton.addEventListener("click", () => goToWorkflowStep(4));
+  refs.restartButton.addEventListener("click", restartWorkflow);
+  refs.workflowProgressItems.forEach((item) => {
+    item.addEventListener("click", () => goToWorkflowStep(Number(item.dataset.workflowTarget)));
+  });
   refs.startCameraButton.addEventListener("click", startCamera);
+  refs.uploadPhotoButton.addEventListener("click", () => refs.photoUploadInput.click());
+  refs.photoUploadInput.addEventListener("change", handlePhotoUpload);
   refs.captureButton.addEventListener("click", handleCapture);
   refs.autoCaptureButton.addEventListener("click", handleAutoCapture);
   refs.retakeButton.addEventListener("click", handleRetake);
@@ -1828,29 +2145,24 @@ function bindEvents() {
     state.stickers = [];
     state.selectedStickerId = null;
     renderStickerLayer();
-    renderStickerControls();
   });
-  refs.stickerScaleInput.addEventListener("input", (event) => {
-    updateSelectedStickerScale(event.target.value);
-  });
-  refs.stickerRotationInput.addEventListener("input", (event) => {
-    updateSelectedStickerRotation(event.target.value);
-  });
-  refs.stickerFlipButton.addEventListener("click", toggleSelectedStickerMirror);
-  refs.deleteStickerButton.addEventListener("click", deleteSelectedSticker);
   refs.stripInner.addEventListener("click", (event) => {
     if (event.target === refs.stripInner || event.target === refs.stickerLayer) {
       state.selectedStickerId = null;
       renderStickerLayer();
-      renderStickerControls();
     }
   });
 
   window.addEventListener("beforeunload", () => {
     stopCamera();
     refs.backgroundMusic.pause();
+    removeBackgroundVideoUnlockListeners();
     removeMusicUnlockListeners();
     window.removeEventListener("resize", resizeBackdropCanvas);
+
+    if (state.backgroundVideoVisibilityHandler) {
+      document.removeEventListener("visibilitychange", state.backgroundVideoVisibilityHandler);
+    }
 
     if (state.backgroundVideoMonitor) {
       window.clearInterval(state.backgroundVideoMonitor);
