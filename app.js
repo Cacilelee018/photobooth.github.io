@@ -24,8 +24,8 @@ const PERSON_SEGMENTATION_MODEL = new URL(
   "./assets/models/selfie-multiclass-256x256.tflite",
   document.baseURI,
 ).href;
-const PERSON_MASK_SOFT_EDGE_START = 0.08;
-const PERSON_MASK_SOFT_EDGE_END = 0.58;
+const PERSON_MASK_SOFT_EDGE_START = 0.18;
+const PERSON_MASK_SOFT_EDGE_END = 0.72;
 
 const portraitBackgrounds = [
   { id: "blush", name: "블러시", color: "#e5b5cf" },
@@ -226,6 +226,7 @@ const state = {
   selectedThemeId: "aurora",
   capturedPhotos: Array(CUT_COUNT).fill(null),
   rawCapturedPhotos: Array(CUT_COUNT).fill(null),
+  portraitCutouts: Array(CUT_COUNT).fill(null),
   activeSlotIndex: 0,
   savedStrips: [],
   presetStickers: createStickerAssetLibrary(),
@@ -246,6 +247,7 @@ const state = {
   selectedPortraitBackgroundId: portraitBackgrounds[0].id,
   portraitSegmenter: null,
   portraitSegmenterPromise: null,
+  portraitSegmenterCanvas: null,
   portraitSegmentationState: "idle",
   isPhotoProcessing: false,
 };
@@ -434,15 +436,36 @@ async function ensurePortraitSegmenter() {
   state.portraitSegmenterPromise = (async () => {
     const { FilesetResolver, ImageSegmenter } = await import(MEDIAPIPE_VISION_MODULE);
     const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_PATH);
-    const segmenter = await ImageSegmenter.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath: PERSON_SEGMENTATION_MODEL,
-        delegate: "CPU",
-      },
+    const commonOptions = {
       runningMode: "IMAGE",
       outputCategoryMask: false,
       outputConfidenceMasks: true,
-    });
+    };
+    let segmenter;
+
+    try {
+      const gpuCanvas = document.createElement("canvas");
+      gpuCanvas.width = 1;
+      gpuCanvas.height = 1;
+      segmenter = await ImageSegmenter.createFromOptions(vision, {
+        ...commonOptions,
+        canvas: gpuCanvas,
+        baseOptions: {
+          modelAssetPath: PERSON_SEGMENTATION_MODEL,
+          delegate: "GPU",
+        },
+      });
+      state.portraitSegmenterCanvas = gpuCanvas;
+    } catch (gpuError) {
+      console.warn("GPU 누끼 초기화 실패, CPU로 전환합니다.", gpuError);
+      segmenter = await ImageSegmenter.createFromOptions(vision, {
+        ...commonOptions,
+        baseOptions: {
+          modelAssetPath: PERSON_SEGMENTATION_MODEL,
+          delegate: "CPU",
+        },
+      });
+    }
 
     state.portraitSegmenter = segmenter;
     setPortraitSegmentationState("ready", "자동 누끼 준비 완료");
@@ -515,14 +538,14 @@ function refinePersonConfidenceMask(source, width, height) {
 
       const index = y * width + x;
       const softened = weightedTotal / totalWeight;
-      refined[index] = Math.max(source[index], softened * 0.97);
+      refined[index] = clamp(source[index] * 0.78 + softened * 0.22, 0, 1);
     }
   }
 
   return refined;
 }
 
-async function createPortraitComposite(rawPhoto, segmenter, background) {
+async function createPortraitCutout(rawPhoto, segmenter) {
   const image = await loadImage(rawPhoto);
   const photoCanvas = createNormalizedPhotoCanvas(image, image.naturalWidth, image.naturalHeight);
   const result = segmenter.segment(photoCanvas);
@@ -571,18 +594,21 @@ async function createPortraitComposite(rawPhoto, segmenter, background) {
     personContext.imageSmoothingQuality = "high";
     personContext.drawImage(maskCanvas, 0, 0, PHOTO_WIDTH, PHOTO_HEIGHT);
 
-    const outputCanvas = document.createElement("canvas");
-    const outputContext = outputCanvas.getContext("2d");
-    outputCanvas.width = PHOTO_WIDTH;
-    outputCanvas.height = PHOTO_HEIGHT;
-    outputContext.fillStyle = background.color;
-    outputContext.fillRect(0, 0, PHOTO_WIDTH, PHOTO_HEIGHT);
-    outputContext.drawImage(personCanvas, 0, 0);
-
-    return outputCanvas.toDataURL("image/png");
+    return personCanvas;
   } finally {
     result.close();
   }
+}
+
+function composePortraitBackground(personCanvas, background) {
+  const outputCanvas = document.createElement("canvas");
+  const outputContext = outputCanvas.getContext("2d");
+  outputCanvas.width = PHOTO_WIDTH;
+  outputCanvas.height = PHOTO_HEIGHT;
+  outputContext.fillStyle = background.color;
+  outputContext.fillRect(0, 0, PHOTO_WIDTH, PHOTO_HEIGHT);
+  outputContext.drawImage(personCanvas, 0, 0);
+  return outputCanvas.toDataURL("image/png");
 }
 
 async function processAndStorePhoto(slotIndex, rawPhoto) {
@@ -595,14 +621,16 @@ async function processAndStorePhoto(slotIndex, rawPhoto) {
   try {
     const segmenter = await ensurePortraitSegmenter();
     setPortraitSegmentationState("processing", "인물 분리 중");
-    state.capturedPhotos[slotIndex] = await createPortraitComposite(
-      rawPhoto,
-      segmenter,
+    const personCanvas = await createPortraitCutout(rawPhoto, segmenter);
+    state.portraitCutouts[slotIndex] = personCanvas;
+    state.capturedPhotos[slotIndex] = composePortraitBackground(
+      personCanvas,
       getSelectedPortraitBackground(),
     );
     setPortraitSegmentationState("ready", "자동 누끼 준비 완료");
   } catch (error) {
     console.error(error);
+    state.portraitCutouts[slotIndex] = null;
     state.capturedPhotos[slotIndex] = rawPhoto;
     setPortraitSegmentationState("error", "누끼 실패 · 원본 유지");
   } finally {
@@ -635,14 +663,20 @@ async function handlePortraitBackgroundChange(backgroundId) {
   updateControlState();
 
   try {
-    const segmenter = await ensurePortraitSegmenter();
     const background = getSelectedPortraitBackground();
-    setPortraitSegmentationState("processing", "배경색 다시 적용 중");
+    const missingCutoutSlots = occupiedSlots.filter((slotIndex) => !state.portraitCutouts[slotIndex]);
+    const segmenter = missingCutoutSlots.length ? await ensurePortraitSegmenter() : null;
 
     for (const slotIndex of occupiedSlots) {
-      state.capturedPhotos[slotIndex] = await createPortraitComposite(
-        state.rawCapturedPhotos[slotIndex],
-        segmenter,
+      if (!state.portraitCutouts[slotIndex]) {
+        state.portraitCutouts[slotIndex] = await createPortraitCutout(
+          state.rawCapturedPhotos[slotIndex],
+          segmenter,
+        );
+      }
+
+      state.capturedPhotos[slotIndex] = composePortraitBackground(
+        state.portraitCutouts[slotIndex],
         background,
       );
     }
@@ -1763,12 +1797,14 @@ async function handlePhotoUpload(event) {
 function handleRetake() {
   state.capturedPhotos[state.activeSlotIndex] = null;
   state.rawCapturedPhotos[state.activeSlotIndex] = null;
+  state.portraitCutouts[state.activeSlotIndex] = null;
   renderPreviewShell();
 }
 
 function handleReset() {
   state.capturedPhotos = Array(CUT_COUNT).fill(null);
   state.rawCapturedPhotos = Array(CUT_COUNT).fill(null);
+  state.portraitCutouts = Array(CUT_COUNT).fill(null);
   state.activeSlotIndex = 0;
   state.stickers = [];
   state.selectedStickerId = null;
@@ -2522,6 +2558,7 @@ function init() {
   initializeBackdrop();
   bindEvents();
   renderAll();
+  ensurePortraitSegmenter().catch((error) => console.error(error));
 }
 
 init();
