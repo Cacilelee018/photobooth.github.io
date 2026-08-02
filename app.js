@@ -26,6 +26,7 @@ const PERSON_SEGMENTATION_MODEL = new URL(
 ).href;
 const PERSON_MASK_SOFT_EDGE_START = 0.18;
 const PERSON_MASK_SOFT_EDGE_END = 0.72;
+const CAMERA_PERMISSION_TIMEOUT_MS = 15000;
 
 const portraitBackgrounds = [
   { id: "blush", name: "블러시", color: "#e5b5cf" },
@@ -1730,6 +1731,14 @@ function getCameraErrorMessage(error) {
     };
   }
 
+  if (errorName === "CameraPermissionTimeoutError") {
+    return {
+      status: "카메라 권한을 확인해 주세요",
+      message: "카메라 권한창이 나타나지 않았어요.",
+      help: `${getCameraPermissionHelp()} 이미 차단한 적이 있다면 이 사이트의 권한을 초기화한 뒤 다시 눌러 주세요.`,
+    };
+  }
+
   if (["NotAllowedError", "PermissionDeniedError", "SecurityError"].includes(errorName)) {
     return {
       status: "카메라 권한이 차단됐어요",
@@ -1761,9 +1770,38 @@ function getCameraErrorMessage(error) {
   };
 }
 
+function getUserMediaWithTimeout(constraints) {
+  return new Promise((resolve, reject) => {
+    let timedOut = false;
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      const timeoutError = new Error("Camera permission request timed out.");
+      timeoutError.name = "CameraPermissionTimeoutError";
+      reject(timeoutError);
+    }, CAMERA_PERMISSION_TIMEOUT_MS);
+
+    navigator.mediaDevices.getUserMedia(constraints).then(
+      (stream) => {
+        window.clearTimeout(timeoutId);
+        if (timedOut) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        resolve(stream);
+      },
+      (error) => {
+        window.clearTimeout(timeoutId);
+        if (!timedOut) {
+          reject(error);
+        }
+      },
+    );
+  });
+}
+
 async function requestCameraStream() {
   try {
-    return await navigator.mediaDevices.getUserMedia({
+    return await getUserMediaWithTimeout({
       video: {
         facingMode: { ideal: "user" },
         width: { ideal: 1280 },
@@ -1776,7 +1814,7 @@ async function requestCameraStream() {
       throw error;
     }
 
-    return navigator.mediaDevices.getUserMedia({
+    return getUserMediaWithTimeout({
       video: true,
       audio: false,
     });
@@ -1790,7 +1828,7 @@ async function startCamera() {
 
   setCameraMessage(
     "카메라 연결을 준비하고 있어요.",
-    "권한 요청이 나타나면 카메라 사용을 허용해 주세요.",
+    "권한 요청이 나타나면 카메라 사용을 허용해 주세요. 창이 뜨지 않으면 잠시 후 해결 방법을 안내합니다.",
   );
   refs.cameraStatus.textContent = "카메라 연결 중";
 
@@ -1837,6 +1875,10 @@ function stopCamera() {
   state.stream.getTracks().forEach((track) => track.stop());
   state.stream = null;
   refs.camera.srcObject = null;
+  setCameraMessage(
+    "카메라를 시작하거나 기기에 저장된 사진을 불러와 주세요.",
+    "권한창이 뜨지 않으면 이 사이트의 카메라 권한을 초기화한 뒤 다시 시도해 주세요.",
+  );
   updateControlState();
 }
 
