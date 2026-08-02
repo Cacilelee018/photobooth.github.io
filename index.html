@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0" />
     <title>SPECTRA PHOTOBOOTH</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260802-1810" />
+    <link rel="stylesheet" href="./styles.css?v=20260802-2230" />
   </head>
   <body>
     <div class="cosmic-video-bg" aria-hidden="true">
@@ -129,7 +129,7 @@
         <section class="workflow-stage" data-workflow-step="2" aria-labelledby="captureStepTitle" hidden>
           <article class="glass-panel workflow-panel live-panel">
             <div class="window-bar">
-              <span class="window-title">STEP 02 / CAPTURE & REVIEW</span>
+              <span class="window-title">STEP 02 / CAPTURE &amp; REVIEW</span>
               <span class="window-lights"><i></i><i></i><i></i></span>
             </div>
             <div class="workflow-heading">
@@ -193,6 +193,15 @@
                   <button class="action-button hotpink" id="captureButton" type="button" disabled>1컷 촬영</button>
                   <button class="action-button violet" id="autoCaptureButton" type="button" disabled>4컷 연속 촬영</button>
                   <button class="action-button aqua" id="retakeButton" type="button" disabled>선택한 컷 다시찍기</button>
+                  <button
+                    class="action-button clear"
+                    id="editPortraitButton"
+                    type="button"
+                    aria-haspopup="dialog"
+                    disabled
+                  >
+                    선택한 컷 누끼 수정
+                  </button>
                   <button class="action-button clear" id="resetButton" type="button">4컷 전체 지우기</button>
                 </div>
               </div>
@@ -355,6 +364,69 @@
       </footer>
     </main>
 
+    <div class="portrait-editor-overlay" id="portraitEditorOverlay" hidden>
+      <section
+        class="portrait-editor-dialog glass-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="portraitEditorTitle"
+      >
+        <div class="window-bar">
+          <span class="window-title">PORTRAIT MASK EDITOR</span>
+          <span class="window-lights"><i></i><i></i><i></i></span>
+        </div>
+        <div class="portrait-editor-heading">
+          <div>
+            <p class="section-label">MASK REFINE</p>
+            <h2 id="portraitEditorTitle" tabindex="-1">누끼 경계를 직접 다듬어요</h2>
+          </div>
+          <span class="status-pill" id="portraitEditorCutLabel">CUT 01</span>
+        </div>
+
+        <div class="portrait-editor-layout">
+          <div class="portrait-editor-canvas-shell">
+            <canvas
+              id="portraitEditorCanvas"
+              width="960"
+              height="1200"
+              aria-label="누끼 수정 캔버스"
+            ></canvas>
+          </div>
+
+          <div class="portrait-editor-tools">
+            <div class="portrait-editor-tool-group" role="group" aria-label="브러시 모드">
+              <button class="portrait-tool-button active" id="portraitEraseButton" type="button" aria-pressed="true">
+                지우기
+              </button>
+              <button class="portrait-tool-button" id="portraitRestoreButton" type="button" aria-pressed="false">
+                복원
+              </button>
+            </div>
+
+            <label class="portrait-brush-size" for="portraitBrushSize">
+              <span>브러시 크기</span>
+              <output id="portraitBrushSizeValue" for="portraitBrushSize">80</output>
+              <input id="portraitBrushSize" type="range" min="24" max="200" step="4" value="80" />
+            </label>
+
+            <div class="portrait-editor-command-row">
+              <button class="mini-button" id="portraitUndoButton" type="button" disabled>실행 취소</button>
+              <button class="mini-button" id="portraitResetMaskButton" type="button">자동 누끼로 초기화</button>
+            </div>
+
+            <p class="portrait-editor-status" id="portraitEditorStatus" aria-live="polite">
+              캔버스 위를 드래그해 누끼를 수정하세요.
+            </p>
+          </div>
+        </div>
+
+        <div class="portrait-editor-actions">
+          <button class="action-button clear" id="portraitEditorCancelButton" type="button">취소</button>
+          <button class="action-button chrome" id="portraitEditorApplyButton" type="button">수정 적용</button>
+        </div>
+      </section>
+    </div>
+
     <template id="themeButtonTemplate">
       <button class="theme-card" type="button">
         <div class="theme-card-preview"></div>
@@ -370,6 +442,6 @@
       </button>
     </template>
 
-    <script src="./app.js?v=20260802-2055"></script>
+    <script src="./app.js?v=20260802-2230"></script>
   </body>
 </html>

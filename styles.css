@@ -613,6 +613,152 @@ button {
   margin-top: 12px;
 }
 
+body.portrait-editor-open {
+  overflow: hidden;
+}
+
+.portrait-editor-overlay {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(38, 16, 46, 0.72);
+  backdrop-filter: blur(14px);
+}
+
+.portrait-editor-overlay[hidden] {
+  display: none;
+}
+
+.portrait-editor-dialog {
+  width: min(940px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  border-color: rgba(255, 218, 242, 0.52);
+  background: rgba(82, 45, 88, 0.92);
+  box-shadow: 0 28px 80px rgba(33, 10, 42, 0.5);
+}
+
+.portrait-editor-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 26px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.portrait-editor-heading h2 {
+  margin: 4px 0 0;
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.portrait-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 560px) minmax(220px, 1fr);
+  align-items: start;
+  gap: 22px;
+  padding: 22px 26px;
+}
+
+.portrait-editor-canvas-shell {
+  position: relative;
+  width: min(100%, 520px);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(255, 226, 246, 0.56);
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.08) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.08) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.08) 75%);
+  background-position: 0 0, 12px 12px;
+  background-size: 24px 24px;
+}
+
+#portraitEditorCanvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.portrait-editor-tools {
+  display: grid;
+  gap: 18px;
+}
+
+.portrait-editor-tool-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--line-strong);
+}
+
+.portrait-tool-button {
+  min-height: 42px;
+  border: 0;
+  color: var(--text-soft);
+  background: rgba(63, 34, 73, 0.5);
+  cursor: pointer;
+}
+
+.portrait-tool-button + .portrait-tool-button {
+  border-left: 1px solid var(--line-strong);
+}
+
+.portrait-tool-button.active {
+  color: var(--text);
+  background: rgba(224, 137, 191, 0.38);
+  box-shadow: inset 0 0 0 1px rgba(255, 217, 242, 0.26);
+}
+
+.portrait-tool-button:focus-visible,
+#portraitEditorCanvas:focus-visible {
+  outline: 2px solid rgba(255, 225, 246, 0.88);
+  outline-offset: 2px;
+}
+
+.portrait-brush-size {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  color: var(--text-soft);
+  font-size: 0.76rem;
+}
+
+.portrait-brush-size output {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.portrait-brush-size input {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: #e79ac5;
+}
+
+.portrait-editor-command-row,
+.portrait-editor-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.portrait-editor-status {
+  min-height: 44px;
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 0.68rem;
+  line-height: 1.65;
+}
+
+.portrait-editor-actions {
+  padding: 0 26px 24px;
+}
+
 .portrait-background-panel {
   display: grid;
   gap: 12px;
@@ -1971,6 +2117,19 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
     border-top: 1px solid var(--line);
     border-left: 0;
   }
+
+  .portrait-editor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .portrait-editor-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .portrait-editor-status {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 640px) {
@@ -2025,6 +2184,46 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
   .hero-copy .eyebrow {
     margin-bottom: 9px;
     font-size: 0.56rem;
+  }
+
+  .portrait-editor-overlay {
+    align-items: end;
+    padding: 8px;
+  }
+
+  .portrait-editor-dialog {
+    max-height: calc(100dvh - 16px);
+  }
+
+  .portrait-editor-heading {
+    align-items: flex-start;
+    padding: 18px 16px 14px;
+  }
+
+  .portrait-editor-heading h2 {
+    font-size: 1.18rem;
+  }
+
+  .portrait-editor-layout {
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .portrait-editor-canvas-shell {
+    width: min(100%, 360px);
+  }
+
+  .portrait-editor-tools {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .portrait-editor-status {
+    grid-column: auto;
+  }
+
+  .portrait-editor-actions {
+    padding: 0 16px 16px;
   }
 
   .hero-feature-row {

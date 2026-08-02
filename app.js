@@ -30,8 +30,7 @@ const PERSON_SEGMENTATION_FALLBACK_MODEL = new URL(
 ).href;
 const PERSON_MASK_SOFT_EDGE_START = 0.18;
 const PERSON_MASK_SOFT_EDGE_END = 0.72;
-const PERSON_MASK_MIN_VISIBLE_RATIO = 0.01;
-const PERSON_MASK_MIN_PEAK_CONFIDENCE = 0.3;
+const PERSON_MASK_MIN_VISIBLE_RATIO = 0.0005;
 const CAMERA_PERMISSION_TIMEOUT_MS = 15000;
 
 const portraitBackgrounds = [
@@ -234,6 +233,7 @@ const state = {
   capturedPhotos: Array(CUT_COUNT).fill(null),
   rawCapturedPhotos: Array(CUT_COUNT).fill(null),
   portraitCutouts: Array(CUT_COUNT).fill(null),
+  portraitBaseCutouts: Array(CUT_COUNT).fill(null),
   activeSlotIndex: 0,
   savedStrips: [],
   presetStickers: createStickerAssetLibrary(),
@@ -261,6 +261,16 @@ const state = {
   portraitSegmenterCanvas: null,
   portraitSegmentationState: "idle",
   isPhotoProcessing: false,
+  portraitEditorSlotIndex: null,
+  portraitEditorMode: "erase",
+  portraitEditorBrushSize: 80,
+  portraitEditorRawCanvas: null,
+  portraitEditorWorkingCutout: null,
+  portraitEditorUndoSnapshot: null,
+  portraitEditorCursor: null,
+  portraitEditorLastPoint: null,
+  portraitEditorPointerId: null,
+  portraitEditorStatusMessage: "캔버스 위를 드래그해 누끼를 수정하세요.",
 };
 
 const refs = {
@@ -301,6 +311,7 @@ const refs = {
   captureButton: document.getElementById("captureButton"),
   autoCaptureButton: document.getElementById("autoCaptureButton"),
   retakeButton: document.getElementById("retakeButton"),
+  editPortraitButton: document.getElementById("editPortraitButton"),
   resetButton: document.getElementById("resetButton"),
   saveButton: document.getElementById("saveButton"),
   slotStatus: document.getElementById("slotStatus"),
@@ -323,6 +334,19 @@ const refs = {
   savedGallery: document.getElementById("savedGallery"),
   themeButtonTemplate: document.getElementById("themeButtonTemplate"),
   stickerButtonTemplate: document.getElementById("stickerButtonTemplate"),
+  portraitEditorOverlay: document.getElementById("portraitEditorOverlay"),
+  portraitEditorTitle: document.getElementById("portraitEditorTitle"),
+  portraitEditorCutLabel: document.getElementById("portraitEditorCutLabel"),
+  portraitEditorCanvas: document.getElementById("portraitEditorCanvas"),
+  portraitEraseButton: document.getElementById("portraitEraseButton"),
+  portraitRestoreButton: document.getElementById("portraitRestoreButton"),
+  portraitBrushSize: document.getElementById("portraitBrushSize"),
+  portraitBrushSizeValue: document.getElementById("portraitBrushSizeValue"),
+  portraitUndoButton: document.getElementById("portraitUndoButton"),
+  portraitResetMaskButton: document.getElementById("portraitResetMaskButton"),
+  portraitEditorStatus: document.getElementById("portraitEditorStatus"),
+  portraitEditorCancelButton: document.getElementById("portraitEditorCancelButton"),
+  portraitEditorApplyButton: document.getElementById("portraitEditorApplyButton"),
 };
 
 function clamp(value, min, max) {
@@ -577,6 +601,25 @@ function createNormalizedPhotoCanvas(source, sourceWidth, sourceHeight) {
   return canvas;
 }
 
+function cloneCanvas(source) {
+  if (!source) {
+    return null;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = source.width;
+  canvas.height = source.height;
+  canvas.getContext("2d").drawImage(source, 0, 0);
+  return canvas;
+}
+
+function createEmptyPhotoCanvas() {
+  const canvas = document.createElement("canvas");
+  canvas.width = PHOTO_WIDTH;
+  canvas.height = PHOTO_HEIGHT;
+  return canvas;
+}
+
 function combinePersonConfidenceMasks(masks, labels) {
   const maskWidth = masks[0]?.width || 0;
   const maskHeight = masks[0]?.height || 0;
@@ -647,10 +690,7 @@ function assertUsablePersonMask(confidence) {
   }
 
   const visibleRatio = confidence.length ? visiblePixels / confidence.length : 0;
-  if (
-    peakConfidence < PERSON_MASK_MIN_PEAK_CONFIDENCE ||
-    visibleRatio < PERSON_MASK_MIN_VISIBLE_RATIO
-  ) {
+  if (visibleRatio < PERSON_MASK_MIN_VISIBLE_RATIO) {
     const error = new Error(
       `인물 마스크가 비어 있습니다. peak=${peakConfidence.toFixed(3)}, ratio=${visibleRatio.toFixed(4)}`,
     );
@@ -745,6 +785,7 @@ function composePortraitBackground(personCanvas, background) {
 async function processAndStorePhoto(slotIndex, rawPhoto) {
   state.rawCapturedPhotos[slotIndex] = rawPhoto;
   state.portraitCutouts[slotIndex] = null;
+  state.portraitBaseCutouts[slotIndex] = null;
 
   if (!state.portraitBackgroundEnabled) {
     state.capturedPhotos[slotIndex] = rawPhoto;
@@ -763,6 +804,7 @@ async function processAndStorePhoto(slotIndex, rawPhoto) {
     setPortraitSegmentationState("processing", "인물 분리 중");
     const personCanvas = await createReliablePortraitCutout(rawPhoto);
     state.portraitCutouts[slotIndex] = personCanvas;
+    state.portraitBaseCutouts[slotIndex] = cloneCanvas(personCanvas);
     state.capturedPhotos[slotIndex] = composePortraitBackground(
       personCanvas,
       getSelectedPortraitBackground(),
@@ -780,6 +822,7 @@ async function processAndStorePhoto(slotIndex, rawPhoto) {
       console.error(error);
     }
     state.portraitCutouts[slotIndex] = null;
+    state.portraitBaseCutouts[slotIndex] = null;
     state.capturedPhotos[slotIndex] = rawPhoto;
     setPortraitSegmentationState(
       "error",
@@ -829,6 +872,9 @@ async function handlePortraitBackgroundChange(backgroundId) {
         state.portraitCutouts[slotIndex] = await createReliablePortraitCutout(
           state.rawCapturedPhotos[slotIndex],
         );
+        state.portraitBaseCutouts[slotIndex] = cloneCanvas(
+          state.portraitCutouts[slotIndex],
+        );
       }
 
       state.capturedPhotos[slotIndex] = composePortraitBackground(
@@ -851,6 +897,7 @@ async function handlePortraitBackgroundChange(backgroundId) {
     }
     occupiedSlots.forEach((slotIndex) => {
       state.portraitCutouts[slotIndex] = null;
+      state.portraitBaseCutouts[slotIndex] = null;
       state.capturedPhotos[slotIndex] = state.rawCapturedPhotos[slotIndex];
     });
     setPortraitSegmentationState(
@@ -890,6 +937,322 @@ async function handlePortraitBackgroundToggle() {
   renderPortraitBackgroundOptions();
   renderPreviewShell();
   await handlePortraitBackgroundChange(state.selectedPortraitBackgroundId);
+}
+
+function setPortraitEditorMode(mode) {
+  state.portraitEditorMode = mode;
+  state.portraitEditorStatusMessage =
+    mode === "erase"
+      ? "지울 배경 영역을 손가락이나 마우스로 칠하세요."
+      : "잘려 나간 인물 영역을 손가락이나 마우스로 복원하세요.";
+  renderPortraitEditor();
+}
+
+function renderPortraitEditor() {
+  const workingCutout = state.portraitEditorWorkingCutout;
+  if (!workingCutout || refs.portraitEditorOverlay.hidden) {
+    return;
+  }
+
+  const canvas = refs.portraitEditorCanvas;
+  const context = canvas.getContext("2d");
+  const background = getSelectedPortraitBackground();
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = background.color;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(workingCutout, 0, 0, canvas.width, canvas.height);
+
+  if (state.portraitEditorCursor) {
+    const radius = state.portraitEditorBrushSize / 2;
+    context.save();
+    context.beginPath();
+    context.arc(
+      state.portraitEditorCursor.x,
+      state.portraitEditorCursor.y,
+      radius,
+      0,
+      Math.PI * 2,
+    );
+    context.lineWidth = 5;
+    context.strokeStyle = "rgba(45, 19, 52, 0.76)";
+    context.stroke();
+    context.lineWidth = 2;
+    context.strokeStyle = "rgba(255, 247, 252, 0.96)";
+    context.stroke();
+    context.restore();
+  }
+
+  const isEraseMode = state.portraitEditorMode === "erase";
+  refs.portraitEraseButton.classList.toggle("active", isEraseMode);
+  refs.portraitEraseButton.setAttribute("aria-pressed", String(isEraseMode));
+  refs.portraitRestoreButton.classList.toggle("active", !isEraseMode);
+  refs.portraitRestoreButton.setAttribute("aria-pressed", String(!isEraseMode));
+  refs.portraitBrushSize.value = String(state.portraitEditorBrushSize);
+  refs.portraitBrushSizeValue.value = String(state.portraitEditorBrushSize);
+  refs.portraitUndoButton.disabled = !state.portraitEditorUndoSnapshot;
+  refs.portraitResetMaskButton.textContent = state.portraitBaseCutouts[state.portraitEditorSlotIndex]
+    ? "자동 누끼로 초기화"
+    : "브러시 결과 지우기";
+  refs.portraitEditorStatus.textContent = state.portraitEditorStatusMessage;
+}
+
+async function openPortraitEditor() {
+  const slotIndex = state.activeSlotIndex;
+  const rawPhoto = state.rawCapturedPhotos[slotIndex];
+  if (!rawPhoto || !state.portraitBackgroundEnabled) {
+    return;
+  }
+
+  refs.editPortraitButton.disabled = true;
+
+  try {
+    const image = await loadImage(rawPhoto);
+    state.portraitEditorSlotIndex = slotIndex;
+    state.portraitEditorRawCanvas = createNormalizedPhotoCanvas(
+      image,
+      image.naturalWidth,
+      image.naturalHeight,
+    );
+    state.portraitEditorWorkingCutout = state.portraitCutouts[slotIndex]
+      ? cloneCanvas(state.portraitCutouts[slotIndex])
+      : createEmptyPhotoCanvas();
+    state.portraitEditorUndoSnapshot = null;
+    state.portraitEditorCursor = null;
+    state.portraitEditorLastPoint = null;
+    state.portraitEditorPointerId = null;
+    state.portraitEditorMode = state.portraitCutouts[slotIndex] ? "erase" : "restore";
+    state.portraitEditorStatusMessage = state.portraitCutouts[slotIndex]
+      ? "캔버스 위를 드래그해 누끼를 수정하세요."
+      : "자동 인식 결과가 없어 비어 있습니다. 복원 브러시로 인물 영역을 칠하세요.";
+
+    refs.portraitEditorCutLabel.textContent = `CUT ${String(slotIndex + 1).padStart(2, "0")}`;
+    refs.portraitEditorOverlay.hidden = false;
+    document.body.classList.add("portrait-editor-open");
+    renderPortraitEditor();
+    refs.portraitEditorTitle.focus({ preventScroll: true });
+  } catch (error) {
+    console.error(error);
+    alert("누끼 편집기를 열지 못했어요. 다시 시도해 주세요.");
+  } finally {
+    updateControlState();
+  }
+}
+
+function closePortraitEditor() {
+  refs.portraitEditorOverlay.hidden = true;
+  document.body.classList.remove("portrait-editor-open");
+  state.portraitEditorSlotIndex = null;
+  state.portraitEditorRawCanvas = null;
+  state.portraitEditorWorkingCutout = null;
+  state.portraitEditorUndoSnapshot = null;
+  state.portraitEditorCursor = null;
+  state.portraitEditorLastPoint = null;
+  state.portraitEditorPointerId = null;
+  refs.editPortraitButton.focus({ preventScroll: true });
+}
+
+function getPortraitEditorPoint(event) {
+  const bounds = refs.portraitEditorCanvas.getBoundingClientRect();
+  return {
+    x: clamp(
+      ((event.clientX - bounds.left) / bounds.width) * refs.portraitEditorCanvas.width,
+      0,
+      refs.portraitEditorCanvas.width,
+    ),
+    y: clamp(
+      ((event.clientY - bounds.top) / bounds.height) * refs.portraitEditorCanvas.height,
+      0,
+      refs.portraitEditorCanvas.height,
+    ),
+  };
+}
+
+function applyPortraitBrushDab(point) {
+  const workingCutout = state.portraitEditorWorkingCutout;
+  const rawCanvas = state.portraitEditorRawCanvas;
+  if (!workingCutout || !rawCanvas) {
+    return;
+  }
+
+  const context = workingCutout.getContext("2d");
+  const radius = state.portraitEditorBrushSize / 2;
+
+  if (state.portraitEditorMode === "erase") {
+    const gradient = context.createRadialGradient(
+      point.x,
+      point.y,
+      radius * 0.28,
+      point.x,
+      point.y,
+      radius,
+    );
+    gradient.addColorStop(0, "rgba(0, 0, 0, 1)");
+    gradient.addColorStop(0.68, "rgba(0, 0, 0, 0.94)");
+    gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+    context.save();
+    context.globalCompositeOperation = "destination-out";
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+    return;
+  }
+
+  const left = Math.max(0, Math.floor(point.x - radius));
+  const top = Math.max(0, Math.floor(point.y - radius));
+  const right = Math.min(PHOTO_WIDTH, Math.ceil(point.x + radius));
+  const bottom = Math.min(PHOTO_HEIGHT, Math.ceil(point.y + radius));
+  const width = right - left;
+  const height = bottom - top;
+  if (!width || !height) {
+    return;
+  }
+
+  const patch = document.createElement("canvas");
+  patch.width = width;
+  patch.height = height;
+  const patchContext = patch.getContext("2d");
+  patchContext.drawImage(rawCanvas, left, top, width, height, 0, 0, width, height);
+  const localX = point.x - left;
+  const localY = point.y - top;
+  const gradient = patchContext.createRadialGradient(
+    localX,
+    localY,
+    radius * 0.28,
+    localX,
+    localY,
+    radius,
+  );
+  gradient.addColorStop(0, "rgba(0, 0, 0, 1)");
+  gradient.addColorStop(0.68, "rgba(0, 0, 0, 0.94)");
+  gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+  patchContext.globalCompositeOperation = "destination-in";
+  patchContext.fillStyle = gradient;
+  patchContext.beginPath();
+  patchContext.arc(localX, localY, radius, 0, Math.PI * 2);
+  patchContext.fill();
+  context.save();
+  context.globalCompositeOperation = "source-over";
+  context.drawImage(patch, left, top);
+  context.restore();
+}
+
+function applyPortraitBrushSegment(from, to) {
+  const distance = Math.hypot(to.x - from.x, to.y - from.y);
+  const spacing = Math.max(3, state.portraitEditorBrushSize * 0.18);
+  const steps = Math.max(1, Math.ceil(distance / spacing));
+
+  for (let step = 1; step <= steps; step += 1) {
+    const amount = step / steps;
+    applyPortraitBrushDab({
+      x: from.x + (to.x - from.x) * amount,
+      y: from.y + (to.y - from.y) * amount,
+    });
+  }
+}
+
+function handlePortraitEditorPointerDown(event) {
+  if (event.pointerType === "mouse" && event.button !== 0) {
+    return;
+  }
+
+  event.preventDefault();
+  state.portraitEditorUndoSnapshot = cloneCanvas(state.portraitEditorWorkingCutout);
+  state.portraitEditorPointerId = event.pointerId;
+  state.portraitEditorLastPoint = getPortraitEditorPoint(event);
+  state.portraitEditorCursor = state.portraitEditorLastPoint;
+  refs.portraitEditorCanvas.setPointerCapture?.(event.pointerId);
+  applyPortraitBrushDab(state.portraitEditorLastPoint);
+  state.portraitEditorStatusMessage =
+    state.portraitEditorMode === "erase" ? "배경 영역을 지우는 중" : "인물 영역을 복원하는 중";
+  renderPortraitEditor();
+}
+
+function handlePortraitEditorPointerMove(event) {
+  const point = getPortraitEditorPoint(event);
+  state.portraitEditorCursor = point;
+
+  if (event.pointerId === state.portraitEditorPointerId && state.portraitEditorLastPoint) {
+    event.preventDefault();
+    applyPortraitBrushSegment(state.portraitEditorLastPoint, point);
+    state.portraitEditorLastPoint = point;
+  }
+
+  renderPortraitEditor();
+}
+
+function handlePortraitEditorPointerEnd(event) {
+  if (event.pointerId !== state.portraitEditorPointerId) {
+    return;
+  }
+
+  refs.portraitEditorCanvas.releasePointerCapture?.(event.pointerId);
+  state.portraitEditorPointerId = null;
+  state.portraitEditorLastPoint = null;
+  state.portraitEditorStatusMessage = "브러시 수정이 반영됐습니다. 결과를 확인한 뒤 적용하세요.";
+  renderPortraitEditor();
+}
+
+function undoPortraitEditorStroke() {
+  if (!state.portraitEditorUndoSnapshot) {
+    return;
+  }
+
+  state.portraitEditorWorkingCutout = cloneCanvas(state.portraitEditorUndoSnapshot);
+  state.portraitEditorUndoSnapshot = null;
+  state.portraitEditorStatusMessage = "마지막 브러시 작업을 취소했습니다.";
+  renderPortraitEditor();
+}
+
+function resetPortraitEditorMask() {
+  const baseCutout = state.portraitBaseCutouts[state.portraitEditorSlotIndex];
+  state.portraitEditorUndoSnapshot = cloneCanvas(state.portraitEditorWorkingCutout);
+  state.portraitEditorWorkingCutout = baseCutout
+    ? cloneCanvas(baseCutout)
+    : createEmptyPhotoCanvas();
+  state.portraitEditorStatusMessage = baseCutout
+    ? "자동 누끼 결과로 초기화했습니다."
+    : "복원한 영역을 모두 지웠습니다.";
+  renderPortraitEditor();
+}
+
+function getPortraitCutoutVisibleRatio(canvas) {
+  const pixels = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+  let visiblePixels = 0;
+  let sampledPixels = 0;
+
+  for (let offset = 3; offset < pixels.length; offset += 16) {
+    sampledPixels += 1;
+    if (pixels[offset] > 8) {
+      visiblePixels += 1;
+    }
+  }
+
+  return sampledPixels ? visiblePixels / sampledPixels : 0;
+}
+
+function applyPortraitEditorChanges() {
+  const slotIndex = state.portraitEditorSlotIndex;
+  const workingCutout = state.portraitEditorWorkingCutout;
+  if (slotIndex === null || !workingCutout) {
+    return;
+  }
+
+  if (getPortraitCutoutVisibleRatio(workingCutout) < PERSON_MASK_MIN_VISIBLE_RATIO) {
+    state.portraitEditorStatusMessage = "인물 영역이 비어 있습니다. 복원 브러시로 사람을 칠해 주세요.";
+    renderPortraitEditor();
+    return;
+  }
+
+  state.portraitCutouts[slotIndex] = cloneCanvas(workingCutout);
+  state.capturedPhotos[slotIndex] = composePortraitBackground(
+    state.portraitCutouts[slotIndex],
+    getSelectedPortraitBackground(),
+  );
+  setPortraitSegmentationState("ready", "브러시 누끼 수정 적용 완료");
+  closePortraitEditor();
+  renderPreviewShell();
 }
 
 function getSelectedTheme() {
@@ -1777,6 +2140,11 @@ function updateControlState() {
   refs.captureButton.disabled = !hasStream || isBusy || isComplete;
   refs.autoCaptureButton.disabled = !hasStream || isBusy || isComplete;
   refs.retakeButton.disabled = !activePhoto || isBusy;
+  refs.editPortraitButton.disabled =
+    !activePhoto ||
+    !state.rawCapturedPhotos[state.activeSlotIndex] ||
+    !state.portraitBackgroundEnabled ||
+    isBusy;
   refs.saveButton.disabled = filledCount !== CUT_COUNT || isBusy;
   refs.startCameraButton.disabled = isBusy;
   refs.uploadPhotoButton.disabled = isBusy;
@@ -2157,6 +2525,7 @@ function handleRetake() {
   state.capturedPhotos[state.activeSlotIndex] = null;
   state.rawCapturedPhotos[state.activeSlotIndex] = null;
   state.portraitCutouts[state.activeSlotIndex] = null;
+  state.portraitBaseCutouts[state.activeSlotIndex] = null;
   renderPreviewShell();
 }
 
@@ -2164,6 +2533,7 @@ function handleReset() {
   state.capturedPhotos = Array(CUT_COUNT).fill(null);
   state.rawCapturedPhotos = Array(CUT_COUNT).fill(null);
   state.portraitCutouts = Array(CUT_COUNT).fill(null);
+  state.portraitBaseCutouts = Array(CUT_COUNT).fill(null);
   state.activeSlotIndex = 0;
   state.stickers = [];
   state.selectedStickerId = null;
@@ -2869,7 +3239,40 @@ function bindEvents() {
   refs.captureButton.addEventListener("click", handleCapture);
   refs.autoCaptureButton.addEventListener("click", handleAutoCapture);
   refs.retakeButton.addEventListener("click", handleRetake);
+  refs.editPortraitButton.addEventListener("click", openPortraitEditor);
   refs.resetButton.addEventListener("click", handleReset);
+  refs.portraitEraseButton.addEventListener("click", () => setPortraitEditorMode("erase"));
+  refs.portraitRestoreButton.addEventListener("click", () => setPortraitEditorMode("restore"));
+  refs.portraitBrushSize.addEventListener("input", (event) => {
+    state.portraitEditorBrushSize = Number(event.target.value);
+    renderPortraitEditor();
+  });
+  refs.portraitUndoButton.addEventListener("click", undoPortraitEditorStroke);
+  refs.portraitResetMaskButton.addEventListener("click", resetPortraitEditorMask);
+  refs.portraitEditorCancelButton.addEventListener("click", closePortraitEditor);
+  refs.portraitEditorApplyButton.addEventListener("click", applyPortraitEditorChanges);
+  refs.portraitEditorOverlay.addEventListener("click", (event) => {
+    if (event.target === refs.portraitEditorOverlay) {
+      closePortraitEditor();
+    }
+  });
+  refs.portraitEditorCanvas.addEventListener("pointerdown", handlePortraitEditorPointerDown);
+  refs.portraitEditorCanvas.addEventListener("pointermove", handlePortraitEditorPointerMove, {
+    passive: false,
+  });
+  refs.portraitEditorCanvas.addEventListener("pointerup", handlePortraitEditorPointerEnd);
+  refs.portraitEditorCanvas.addEventListener("pointercancel", handlePortraitEditorPointerEnd);
+  refs.portraitEditorCanvas.addEventListener("pointerleave", () => {
+    if (state.portraitEditorPointerId === null) {
+      state.portraitEditorCursor = null;
+      renderPortraitEditor();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !refs.portraitEditorOverlay.hidden) {
+      closePortraitEditor();
+    }
+  });
   refs.saveButton.addEventListener("click", handleSave);
   refs.clearStickersButton.addEventListener("click", () => {
     state.stickers = [];
