@@ -21,11 +21,11 @@ const MEDIAPIPE_VISION_VERSION = "1.0.1";
 const MEDIAPIPE_VISION_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VISION_VERSION}/vision_bundle.mjs`;
 const MEDIAPIPE_WASM_PATH = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VISION_VERSION}/wasm`;
 const PERSON_SEGMENTATION_MODEL = new URL(
-  "./assets/models/selfie-segmenter.tflite",
+  "./assets/models/selfie-multiclass-256x256.tflite",
   document.baseURI,
 ).href;
-const PERSON_MASK_SOFT_EDGE_START = 0.18;
-const PERSON_MASK_SOFT_EDGE_END = 0.82;
+const PERSON_MASK_SOFT_EDGE_START = 0.08;
+const PERSON_MASK_SOFT_EDGE_END = 0.58;
 
 const portraitBackgrounds = [
   { id: "blush", name: "블러시", color: "#e5b5cf" },
@@ -465,6 +465,63 @@ function createNormalizedPhotoCanvas(source, sourceWidth, sourceHeight) {
   return canvas;
 }
 
+function combinePersonConfidenceMasks(masks, labels) {
+  const maskWidth = masks[0]?.width || 0;
+  const maskHeight = masks[0]?.height || 0;
+  const combined = new Float32Array(maskWidth * maskHeight);
+  const personMaskIndexes = labels.length === masks.length
+    ? labels
+        .map((label, index) => (label.toLowerCase().includes("background") ? -1 : index))
+        .filter((index) => index !== -1)
+    : masks.map((_, index) => index).slice(masks.length > 1 ? 1 : 0);
+
+  if (!personMaskIndexes.length) {
+    throw new Error("인물 클래스 마스크를 찾지 못했습니다.");
+  }
+
+  personMaskIndexes.forEach((maskIndex) => {
+    const values = masks[maskIndex].getAsFloat32Array();
+    for (let index = 0; index < combined.length; index += 1) {
+      combined[index] += values[index];
+    }
+  });
+
+  for (let index = 0; index < combined.length; index += 1) {
+    combined[index] = clamp(combined[index], 0, 1);
+  }
+
+  return { confidence: combined, maskWidth, maskHeight };
+}
+
+function refinePersonConfidenceMask(source, width, height) {
+  const refined = new Float32Array(source.length);
+  const neighbors = [
+    [-1, -1, 1], [0, -1, 2], [1, -1, 1],
+    [-1, 0, 2], [0, 0, 4], [1, 0, 2],
+    [-1, 1, 1], [0, 1, 2], [1, 1, 1],
+  ];
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      let weightedTotal = 0;
+      let totalWeight = 0;
+
+      neighbors.forEach(([offsetX, offsetY, weight]) => {
+        const sampleX = clamp(x + offsetX, 0, width - 1);
+        const sampleY = clamp(y + offsetY, 0, height - 1);
+        weightedTotal += source[sampleY * width + sampleX] * weight;
+        totalWeight += weight;
+      });
+
+      const index = y * width + x;
+      const softened = weightedTotal / totalWeight;
+      refined[index] = Math.max(source[index], softened * 0.97);
+    }
+  }
+
+  return refined;
+}
+
 async function createPortraitComposite(rawPhoto, segmenter, background) {
   const image = await loadImage(rawPhoto);
   const photoCanvas = createNormalizedPhotoCanvas(image, image.naturalWidth, image.naturalHeight);
@@ -473,17 +530,18 @@ async function createPortraitComposite(rawPhoto, segmenter, background) {
   try {
     const masks = result.confidenceMasks || [];
     const labels = segmenter.getLabels();
-    const labelledPersonIndex = labels.findIndex((label) => label.toLowerCase().includes("person"));
-    const personMaskIndex = labelledPersonIndex >= 0 ? labelledPersonIndex : masks.length > 1 ? 1 : 0;
-    const personMask = masks[personMaskIndex];
-
-    if (!personMask) {
+    if (!masks.length) {
       throw new Error("인물 마스크를 생성하지 못했습니다.");
     }
 
-    const maskWidth = personMask.width;
-    const maskHeight = personMask.height;
-    const confidence = personMask.getAsFloat32Array();
+    const combinedMask = combinePersonConfidenceMasks(masks, labels);
+    const maskWidth = combinedMask.maskWidth;
+    const maskHeight = combinedMask.maskHeight;
+    const confidence = refinePersonConfidenceMask(
+      combinedMask.confidence,
+      maskWidth,
+      maskHeight,
+    );
     const maskCanvas = document.createElement("canvas");
     maskCanvas.width = maskWidth;
     maskCanvas.height = maskHeight;
@@ -1307,11 +1365,6 @@ function renderStripSlots() {
       state.selectedStickerId = null;
       renderPreviewShell();
     });
-
-    const badge = document.createElement("span");
-    badge.className = "slot-index";
-    badge.textContent = `CUT ${String(index + 1).padStart(2, "0")}`;
-    slot.appendChild(badge);
 
     if (photo) {
       const image = document.createElement("img");
@@ -2213,7 +2266,7 @@ async function generateStripDataUrl() {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
-  await document.fonts.load('48px "GabiaOndam"').catch(() => undefined);
+  await document.fonts.load('48px "ZenSerif"').catch(() => undefined);
 
   const width = 960;
   const outerPadding = 80;
@@ -2247,14 +2300,14 @@ async function generateStripDataUrl() {
   drawWindowLights(context, shellX + 24, shellY + 24);
 
   context.fillStyle = theme.palette.ink;
-  context.font = '48px "GabiaOndam", sans-serif';
+  context.font = '48px "ZenSerif", serif';
   context.textAlign = "left";
   context.fillText("SPECTRA", outerPadding, shellY + 70);
-  context.font = '22px "GabiaOndam", sans-serif';
+  context.font = '22px "ZenSerif", serif';
   context.fillStyle = withAlpha(theme.palette.border, 0.72);
   context.fillText(theme.name, outerPadding, shellY + 100);
 
-  context.font = '10px "GabiaOndam", sans-serif';
+  context.font = '10px "ZenSerif", serif';
   context.textAlign = "right";
   context.fillStyle = withAlpha(theme.palette.border, 0.55);
   context.fillText(theme.shellLabel, width - outerPadding, shellY + 42);
@@ -2297,7 +2350,7 @@ async function generateStripDataUrl() {
       context.fillRect(outerPadding, slotY, photoWidth, photoHeight);
       context.fillStyle = withAlpha(theme.palette.ink, 0.72);
       context.textAlign = "center";
-      context.font = '14px "GabiaOndam", sans-serif';
+      context.font = '14px "ZenSerif", serif';
       context.fillText(`FRAME ${String(index + 1).padStart(2, "0")}`, width / 2, slotY + photoHeight / 2);
     }
 
@@ -2308,15 +2361,6 @@ async function generateStripDataUrl() {
     context.strokeRect(outerPadding, slotY, photoWidth, photoHeight);
     context.strokeStyle = withAlpha(theme.palette.border, 0.14);
     context.strokeRect(outerPadding + 10, slotY + 10, photoWidth - 20, photoHeight - 20);
-
-    context.fillStyle = "rgba(4,6,11,0.72)";
-    context.fillRect(outerPadding + 14, slotY + 14, 82, 24);
-    context.strokeStyle = withAlpha(theme.palette.border, 0.32);
-    context.strokeRect(outerPadding + 14, slotY + 14, 82, 24);
-    context.fillStyle = withAlpha(theme.palette.border, 0.78);
-    context.textAlign = "left";
-    context.font = '10px "GabiaOndam", sans-serif';
-    context.fillText(`CUT ${String(index + 1).padStart(2, "0")}`, outerPadding + 24, slotY + 30);
 
     context.save();
     context.translate(outerPadding + 22, slotY + photoHeight - 22);
@@ -2351,7 +2395,7 @@ async function generateStripDataUrl() {
   });
 
   context.fillStyle = theme.palette.ink;
-  context.font = '10px "GabiaOndam", sans-serif';
+  context.font = '10px "ZenSerif", serif';
   context.textAlign = "left";
   context.fillText("CELESTIAL IMAGE ARCHIVE", outerPadding, footerY + 42);
   context.fillText(theme.tagLine, outerPadding, footerY + 58);

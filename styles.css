@@ -1,6 +1,6 @@
 @font-face {
-  font-family: "GabiaOndam";
-  src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2304-2@1.0/GabiaOndam-Regular.woff2") format("woff2");
+  font-family: "ZenSerif";
+  src: url("./assets/fonts/zen-serif-regular.otf") format("opentype");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -39,7 +39,7 @@ body {
   margin: 0;
   overflow-x: hidden;
   color: var(--text);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-kerning: normal;
   font-feature-settings: "kern" 1;
   letter-spacing: 0;
@@ -168,7 +168,7 @@ button {
 }
 
 .music-icon {
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 1.3rem;
   line-height: 1;
 }
@@ -198,7 +198,7 @@ button {
   padding: 24px 12px 0;
   border-top: 1px solid var(--line);
   color: var(--text-soft);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.68rem;
   text-align: center;
 }
@@ -231,7 +231,7 @@ button {
 
 .window-title,
 .mini-window-bar span:first-child {
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.66rem;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -288,7 +288,7 @@ button {
 .section-label {
   margin: 0 0 14px;
   color: var(--cyan);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.7rem;
   font-weight: 400;
   letter-spacing: 0;
@@ -297,7 +297,7 @@ button {
 
 .hero-copy h1 {
   margin: 0;
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-weight: 400;
   letter-spacing: 0;
   line-height: 0.88;
@@ -341,7 +341,7 @@ button {
   align-items: center;
   padding: 0 14px;
   color: var(--text-faint);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.63rem;
 }
 
@@ -390,7 +390,7 @@ button {
 }
 
 .section-heading h2 {
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 1.72rem;
 }
 
@@ -407,7 +407,7 @@ button {
 }
 
 .settings-header > span {
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.68rem;
   line-height: 1.35;
 }
@@ -424,7 +424,7 @@ button {
   color: var(--text-soft);
   background: rgba(120, 71, 130, 0.3);
   backdrop-filter: blur(8px);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.62rem;
 }
 
@@ -451,7 +451,7 @@ button {
 
 .session-dot span,
 .session-dot small {
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   letter-spacing: 0;
 }
 
@@ -522,7 +522,7 @@ button {
   border-radius: 1px;
   color: var(--text);
   background: rgba(76, 40, 84, 0.58);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.58rem;
 }
 
@@ -562,7 +562,7 @@ button {
   place-items: center;
   color: white;
   opacity: 0;
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 7rem;
   text-shadow: 0 0 32px rgba(255, 151, 211, 0.82);
 }
@@ -748,7 +748,7 @@ button {
 }
 
 .shooting-note small {
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.6rem;
 }
 
@@ -1058,7 +1058,7 @@ button {
   justify-content: space-between;
   gap: 12px;
   color: rgba(255, 225, 246, 0.72);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.58rem;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -1073,7 +1073,7 @@ button {
 
 .strip-topper span:first-child {
   color: var(--text);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 1.65rem;
   text-transform: none;
 }
@@ -1142,23 +1142,6 @@ button {
   filter: saturate(0.9) contrast(1.03);
 }
 
-.slot-index {
-  position: absolute;
-  z-index: 3;
-  left: 14px;
-  top: 14px;
-  min-height: 22px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 7px;
-  border: 1px solid rgba(255, 224, 245, 0.36);
-  border-radius: 0;
-  color: rgba(242, 245, 255, 0.76);
-  background: rgba(85, 44, 90, 0.62);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
-  font-size: 0.54rem;
-}
-
 .strip-slot-placeholder {
   position: absolute;
   inset: 0;
@@ -1176,7 +1159,7 @@ button {
 
 .strip-slot-placeholder strong {
   color: var(--text-soft);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.66rem;
   font-weight: 400;
 }
@@ -1240,7 +1223,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
   color: #fff9fd;
   background: rgba(99, 48, 109, 0.92);
   box-shadow: 0 5px 16px rgba(38, 8, 43, 0.42);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 1rem;
   line-height: 1;
   pointer-events: auto;
@@ -1374,7 +1357,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 
 .saved-item strong {
   color: var(--text);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-weight: 400;
 }
 
@@ -1458,7 +1441,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 }
 
 .workflow-progress-item span {
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.64rem;
 }
 
@@ -1514,7 +1497,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 .workflow-heading h2 {
   margin: 0;
   color: var(--text);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 2rem;
   font-weight: 400;
   letter-spacing: 0;
@@ -1580,7 +1563,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
   padding-bottom: 12px;
   border-bottom: 1px solid var(--line);
   color: var(--text-faint);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.6rem;
 }
 
@@ -1630,7 +1613,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 
 .session-dot-meta strong,
 .session-dot-meta small {
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.54rem;
   font-weight: 400;
 }
@@ -1680,7 +1663,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 .shared-preview-heading h3 {
   margin: 0;
   color: var(--text);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 1.5rem;
   font-weight: 400;
 }
@@ -1756,7 +1739,7 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
 
 .save-format {
   color: var(--text-faint);
-  font-family: "GabiaOndam", "Apple SD Gothic Neo", sans-serif;
+  font-family: "ZenSerif", "AppleMyungjo", "Batang", serif;
   font-size: 0.62rem;
   line-height: 1.6;
 }
