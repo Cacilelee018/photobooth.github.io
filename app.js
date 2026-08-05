@@ -8,6 +8,9 @@ const BACKDROP_STAR_COUNT = 240;
 const BACKDROP_STREAK_COUNT = 3;
 const MAX_BACKDROP_PIXEL_RATIO = 1.5;
 const BACKGROUND_VIDEO_RATE = 1;
+const BACKGROUND_VIDEO_CROSSFADE_SECONDS = 1.6;
+const BACKGROUND_VIDEO_TRANSITION_MS = 1600;
+const BACKGROUND_VIDEO_MONITOR_MS = 120;
 const BACKGROUND_MUSIC_VOLUME = 0.38;
 const MEDIA_UNLOCK_EVENTS = ["pointerdown", "touchstart", "click", "keydown"];
 const REDUCED_MOTION_QUERY = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1575,11 +1578,76 @@ async function attemptBackgroundVideoPlayback() {
   }
 
   try {
+    if (activeVideo.ended) {
+      activeVideo.currentTime = 0;
+    }
     await activeVideo.play();
     document.body.classList.add("video-background-ready");
     removeBackgroundVideoUnlockListeners();
   } catch (error) {
     // Mobile browsers may defer playback until the first touch.
+  }
+}
+
+async function crossfadeBackgroundVideo() {
+  const videos = refs.cosmicBackgroundVideos;
+  if (videos.length < 2 || state.backgroundVideoCrossfading) {
+    return;
+  }
+
+  const currentIndex = state.backgroundActiveVideoIndex;
+  const nextIndex = (currentIndex + 1) % videos.length;
+  const currentVideo = videos[currentIndex];
+  const nextVideo = videos[nextIndex];
+
+  if (!currentVideo || !nextVideo) {
+    return;
+  }
+
+  state.backgroundVideoCrossfading = true;
+  nextVideo.loop = false;
+  nextVideo.currentTime = 0;
+
+  try {
+    await nextVideo.play();
+  } catch (error) {
+    currentVideo.loop = true;
+    state.backgroundVideoCrossfading = false;
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    nextVideo.classList.add("is-visible");
+    currentVideo.classList.remove("is-visible");
+  });
+
+  if (state.backgroundVideoTransitionTimer) {
+    window.clearTimeout(state.backgroundVideoTransitionTimer);
+  }
+
+  state.backgroundVideoTransitionTimer = window.setTimeout(() => {
+    currentVideo.pause();
+    currentVideo.loop = false;
+    currentVideo.currentTime = 0;
+    state.backgroundActiveVideoIndex = nextIndex;
+    state.backgroundVideoCrossfading = false;
+    state.backgroundVideoTransitionTimer = null;
+  }, BACKGROUND_VIDEO_TRANSITION_MS + 80);
+}
+
+function monitorBackgroundVideoLoop() {
+  if (document.visibilityState !== "visible" || state.backgroundVideoCrossfading) {
+    return;
+  }
+
+  const activeVideo = refs.cosmicBackgroundVideos[state.backgroundActiveVideoIndex];
+  if (!activeVideo || !Number.isFinite(activeVideo.duration) || activeVideo.duration <= 0) {
+    return;
+  }
+
+  const remainingTime = activeVideo.duration - activeVideo.currentTime;
+  if (remainingTime <= BACKGROUND_VIDEO_CROSSFADE_SECONDS) {
+    crossfadeBackgroundVideo();
   }
 }
 
@@ -1589,16 +1657,23 @@ function initializeBackgroundVideo() {
     return;
   }
 
-  videos.forEach((video) => {
+  videos.forEach((video, index) => {
     video.muted = true;
     video.defaultMuted = true;
     video.playsInline = true;
     video.disablePictureInPicture = true;
     video.playbackRate = BACKGROUND_VIDEO_RATE;
-    video.loop = true;
+    video.loop = videos.length === 1;
     video.setAttribute("muted", "");
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
+    video.classList.toggle("is-visible", index === state.backgroundActiveVideoIndex);
+
+    if (index !== state.backgroundActiveVideoIndex) {
+      video.pause();
+      video.currentTime = 0;
+      video.load();
+    }
   });
 
   const activeVideo = videos[state.backgroundActiveVideoIndex];
@@ -1621,6 +1696,15 @@ function initializeBackgroundVideo() {
     }
   };
   document.addEventListener("visibilitychange", state.backgroundVideoVisibilityHandler);
+
+  if (state.backgroundVideoMonitor) {
+    window.clearInterval(state.backgroundVideoMonitor);
+  }
+  state.backgroundVideoMonitor = window.setInterval(
+    monitorBackgroundVideoLoop,
+    BACKGROUND_VIDEO_MONITOR_MS,
+  );
+
   attemptBackgroundVideoPlayback();
 }
 

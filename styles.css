@@ -109,7 +109,9 @@ button {
   opacity: 0;
   transform: scale(1.08);
   filter: brightness(0.86) contrast(1.04);
-  transition: opacity 3.8s linear;
+  backface-visibility: hidden;
+  will-change: opacity;
+  transition: opacity 1600ms ease-in-out;
   animation: cosmic-video-drift 52s ease-in-out infinite alternate;
 }
 
