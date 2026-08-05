@@ -18,7 +18,7 @@ python3 -m http.server 5174
 ## 포함 기능
 
 - `프레임 선택 → 촬영·확인 → 스티커 꾸미기 → 최종 미리보기 → 저장` 5단계 진행
-- 실사 밤하늘 영상과 잔잔하게 반짝이는 별빛 배경
+- 파스텔 행성과 오로라가 둥둥 떠다니는 무음 반복 배경 영상
 - 모바일 인라인 재생과 첫 터치·앱 복귀 재시도를 지원하는 배경 영상
 - 자동재생을 시도하고 첫 화면 터치로 보완되는 반복 배경음악
 - 4컷 포토 프레임 미리보기
@@ -36,6 +36,11 @@ python3 -m http.server 5174
 ## 배경음악 교체
 
 현재 배경음악은 `assets/audio/debussy-arabesque-no-1-music-box.mp3` 파일을 사용합니다.
+
+## 배경 영상 교체
+
+현재 배경은 `assets/background/pastel-cosmic-background-muted.mp4`와
+`assets/background/pastel-cosmic-background-poster.png`을 사용합니다. 영상은 오디오 트랙 없이 원래 속도로 반복 재생됩니다.
 모바일 브라우저에서 소리 자동재생이 차단될 경우 첫 화면 터치와 동시에 재생됩니다.
 
 음원 출처: 전주정보문화산업진흥원

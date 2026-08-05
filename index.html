@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0" />
     <title>SPECTRA PHOTOBOOTH</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260802-2230" />
+    <link rel="stylesheet" href="./styles.css?v=20260805-1645" />
   </head>
   <body>
     <div class="cosmic-video-bg" aria-hidden="true">
@@ -16,28 +16,15 @@
         class="cosmic-background-video is-visible"
         id="cosmicBackgroundVideoA"
         autoplay
+        loop
         muted
         playsinline
         webkit-playsinline
         disablepictureinpicture
         preload="auto"
-        poster="./assets/background/aurora-fallback.png"
+        poster="./assets/background/pastel-cosmic-background-poster.png"
       >
-        <source src="./assets/background/milky-way-primary.mp4" type="video/mp4" />
-        <source src="./assets/background/milky-way-secondary.mp4" type="video/mp4" />
-      </video>
-      <video
-        class="cosmic-background-video"
-        id="cosmicBackgroundVideoB"
-        muted
-        playsinline
-        webkit-playsinline
-        disablepictureinpicture
-        preload="auto"
-        poster="./assets/background/aurora-fallback.png"
-      >
-        <source src="./assets/background/milky-way-primary.mp4" type="video/mp4" />
-        <source src="./assets/background/milky-way-secondary.mp4" type="video/mp4" />
+        <source src="./assets/background/pastel-cosmic-background-muted.mp4?v=20260805-1640" type="video/mp4" />
       </video>
       <div class="cosmic-video-grade"></div>
     </div>
@@ -358,7 +345,7 @@
       </section>
 
       <footer class="site-credit">
-        포토부스에 사용된 프레임과 캐릭터의 저작권은 "혜류뮴"에 있습니다. 
+        포토부스에 사용된 영상,프레임과 캐릭터의 저작권은 "혜류뮴"에 있습니다. 
         <br/>무단도용, AI 학습 등을 금지합니다. 
         <br/>적발 시, 저작권 법에 의해 처벌 받으실 수 있습니다. 
       </footer>
@@ -442,6 +429,6 @@
       </button>
     </template>
 
-    <script src="./app.js?v=20260802-2230"></script>
+    <script src="./app.js?v=20260805-1640"></script>
   </body>
 </html>

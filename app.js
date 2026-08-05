@@ -7,11 +7,7 @@ const BACKDROP_LOOP_MS = 36000;
 const BACKDROP_STAR_COUNT = 240;
 const BACKDROP_STREAK_COUNT = 3;
 const MAX_BACKDROP_PIXEL_RATIO = 1.5;
-const BACKGROUND_VIDEO_RATE = 0.35;
-const BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS = 1.32;
-const BACKGROUND_VIDEO_CROSSFADE_MS = Math.round(
-  (BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS / BACKGROUND_VIDEO_RATE) * 1000,
-);
+const BACKGROUND_VIDEO_RATE = 1;
 const BACKGROUND_MUSIC_VOLUME = 0.38;
 const MEDIA_UNLOCK_EVENTS = ["pointerdown", "touchstart", "click", "keydown"];
 const REDUCED_MOTION_QUERY = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1589,7 +1585,7 @@ async function attemptBackgroundVideoPlayback() {
 
 function initializeBackgroundVideo() {
   const videos = refs.cosmicBackgroundVideos;
-  if (videos.length < 2) {
+  if (!videos.length) {
     return;
   }
 
@@ -1599,6 +1595,7 @@ function initializeBackgroundVideo() {
     video.playsInline = true;
     video.disablePictureInPicture = true;
     video.playbackRate = BACKGROUND_VIDEO_RATE;
+    video.loop = true;
     video.setAttribute("muted", "");
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
@@ -1625,47 +1622,6 @@ function initializeBackgroundVideo() {
   };
   document.addEventListener("visibilitychange", state.backgroundVideoVisibilityHandler);
   attemptBackgroundVideoPlayback();
-
-  state.backgroundVideoMonitor = window.setInterval(() => {
-    const currentVideo = videos[state.backgroundActiveVideoIndex];
-    if (
-      state.backgroundVideoCrossfading ||
-      !Number.isFinite(currentVideo.duration) ||
-      currentVideo.duration <= BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS
-    ) {
-      return;
-    }
-
-    const crossfadeStartsAt = currentVideo.duration - BACKGROUND_VIDEO_CROSSFADE_SOURCE_SECONDS;
-    if (currentVideo.currentTime < crossfadeStartsAt) {
-      return;
-    }
-
-    const nextVideoIndex = state.backgroundActiveVideoIndex === 0 ? 1 : 0;
-    const nextVideo = videos[nextVideoIndex];
-    state.backgroundVideoCrossfading = true;
-    nextVideo.loop = false;
-    nextVideo.currentTime = 0;
-    nextVideo.playbackRate = BACKGROUND_VIDEO_RATE;
-
-    nextVideo
-      .play()
-      .then(() => {
-        nextVideo.classList.add("is-visible");
-        currentVideo.classList.remove("is-visible");
-
-        state.backgroundVideoTransitionTimer = window.setTimeout(() => {
-          currentVideo.pause();
-          currentVideo.currentTime = 0;
-          state.backgroundActiveVideoIndex = nextVideoIndex;
-          state.backgroundVideoCrossfading = false;
-        }, BACKGROUND_VIDEO_CROSSFADE_MS + 120);
-      })
-      .catch(() => {
-        state.backgroundVideoCrossfading = false;
-        currentVideo.loop = true;
-      });
-  }, 160);
 }
 
 function removeMusicUnlockListeners() {
