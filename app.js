@@ -3274,10 +3274,8 @@ function init() {
   state.frameLayout = createFrameLayout(getSelectedTheme());
   initializeBackgroundVideo();
   initializeBackgroundMusic();
-  initializeBackdrop();
   bindEvents();
   renderAll();
-  ensurePortraitSegmenter().catch((error) => console.error(error));
 }
 
 init();

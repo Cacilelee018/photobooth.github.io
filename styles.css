@@ -92,9 +92,7 @@ button {
   z-index: -5;
   overflow: hidden;
   filter: hue-rotate(155deg) saturate(1.08);
-  background:
-    linear-gradient(rgba(2, 8, 20, 0.24), rgba(1, 4, 12, 0.48)),
-    url("./assets/background/aurora-fallback.png") center / cover no-repeat;
+  background: linear-gradient(rgba(45, 27, 55, 0.82), rgba(25, 15, 35, 0.94));
 }
 
 .cosmic-video-bg video,
@@ -2267,6 +2265,38 @@ body[data-workflow-step="3"] .sticker-item.selected .sticker-transform-controls 
   border-color: rgba(203, 128, 169, 0.48);
   background: rgba(248, 214, 232, 0.56);
   box-shadow: 0 12px 30px rgba(151, 87, 125, 0.14), inset 0 0 0 2px rgba(255, 255, 255, 0.54);
+}
+
+/* Keep the translucent look without stacking expensive live blur layers. */
+.glass-panel {
+  -webkit-backdrop-filter: blur(8px) saturate(1.05);
+  backdrop-filter: blur(8px) saturate(1.05);
+}
+
+.theme-card,
+.sticker-card,
+.status-pill,
+.hud-chip,
+.camera-stage,
+.action-button,
+.strip-preview,
+.saved-item,
+.empty-gallery {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.theme-card,
+.sticker-card,
+.saved-item {
+  contain: layout paint;
+}
+
+@media (max-width: 760px) {
+  .glass-panel {
+    -webkit-backdrop-filter: blur(5px) saturate(1.03);
+    backdrop-filter: blur(5px) saturate(1.03);
+  }
 }
 
 .theme-card-preview,

@@ -3,12 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
     <title>SPECTRA PHOTOBOOTH</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260805-1645" />
+    <link rel="stylesheet" href="./styles.css?v=20260805-1745" />
   </head>
   <body>
     <div class="cosmic-video-bg" aria-hidden="true">
@@ -28,11 +25,10 @@
       </video>
       <div class="cosmic-video-grade"></div>
     </div>
-    <canvas class="galaxy-video-bg" id="galaxyBackground" aria-hidden="true"></canvas>
     <div class="background-grid"></div>
 
-    <audio id="backgroundMusic" autoplay loop preload="auto">
-      <source src="./assets/audio/debussy-arabesque-no-1-music-box.mp3?v=20260802-1639" type="audio/mpeg" />
+    <audio id="backgroundMusic" autoplay loop preload="metadata">
+      <source src="./assets/audio/debussy-arabesque-no-1-music-box.mp3?v=20260805-1740" type="audio/mpeg" />
     </audio>
     <button
       class="music-toggle is-waiting"
@@ -152,7 +148,7 @@
                   <div class="portrait-background-heading">
                     <div class="portrait-background-copy">
                       <span>인물 배경</span>
-                      <small id="portraitSegmentationStatus">자동 누끼 준비 중</small>
+                      <small id="portraitSegmentationStatus">촬영 단계에서 준비</small>
                     </div>
                     <label class="portrait-background-toggle">
                       <input
@@ -429,6 +425,6 @@
       </button>
     </template>
 
-    <script src="./app.js?v=20260805-1640"></script>
+    <script src="./app.js?v=20260805-1740"></script>
   </body>
 </html>
