@@ -3,6 +3,8 @@ const COUNTDOWN_SECONDS = 3;
 const CUT_COUNT = 4;
 const AUTO_SHOT_GAP_MS = 900;
 const STICKER_BASE_WIDTH_RATIO = 0.17;
+const STICKER_MIN_SCALE = 0.45;
+const STICKER_MAX_SCALE = 4.25;
 const BACKDROP_LOOP_MS = 36000;
 const BACKDROP_STAR_COUNT = 240;
 const BACKDROP_STREAK_COUNT = 3;
@@ -16,6 +18,8 @@ const MEDIA_UNLOCK_EVENTS = ["pointerdown", "touchstart", "click", "keydown"];
 const REDUCED_MOTION_QUERY = window.matchMedia("(prefers-reduced-motion: reduce)");
 const PHOTO_WIDTH = 960;
 const PHOTO_HEIGHT = 1200;
+const FRAME_WIDTH = 1600;
+const FRAME_HEIGHT = 2300;
 const MEDIAPIPE_VISION_VERSION = "1.0.1";
 const MEDIAPIPE_VISION_MODULE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VISION_VERSION}/vision_bundle.mjs`;
 const MEDIAPIPE_WASM_PATH = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VISION_VERSION}/wasm`;
@@ -39,185 +43,136 @@ const portraitBackgrounds = [
   { id: "mauve", name: "모브", color: "#775577" },
 ];
 
+const CONTACT_SHEET_WINDOWS = [
+  { x: 120, y: 250, width: 650, height: 850 },
+  { x: 830, y: 250, width: 650, height: 850 },
+  { x: 120, y: 1160, width: 650, height: 850 },
+  { x: 830, y: 1160, width: 650, height: 850 },
+];
+
 const themes = [
   {
     id: "aurora",
-    name: "Aurora Veil",
-    description: "핑크빛 오로라가 커튼처럼 흐르는 몽환적인 프레임",
+    name: "Cloud Orbit",
+    description: "포근한 구름과 푸른 행성이 떠도는 하늘빛 프레임",
     className: "theme-aurora",
-    preview: ["#3a214a", "#f2a9d4"],
-    tagLine: "AURORA VEIL / LIGHT CURTAIN / SERIES 04",
-    shellLabel: "POLAR LIGHT DREAM ARCHIVE",
+    preview: ["#dceeff", "#9bcdf8"],
+    previewAsset: "./assets/generated-frames/contact-previews/preview-cloud-orbit-v9.webp",
+    frameAsset: "./assets/generated-frames/contact-sheet/frame-cloud-orbit-v3.webp",
+    photoWindows: CONTACT_SHEET_WINDOWS,
+    tagLine: "CLOUD ORBIT / SKY BLUE / SERIES 04",
+    shellLabel: "CLOUD ORBIT DREAM ARCHIVE",
     seed: 11,
     palette: {
-      bgA: "#3a214a",
-      bgB: "#9b5a83",
-      bgC: "#2b1839",
-      ink: "#fff8fd",
-      border: "#f7dced",
-      frameFill: "rgba(75,38,81,0.36)",
-      accent: "#ff9fd1",
-      accentSoft: "#efd3ff",
+      bgA: "#dceeff",
+      bgB: "#9bcdf8",
+      bgC: "#c8bcf0",
+      ink: "#fafdff",
+      border: "#eaf7ff",
+      frameFill: "rgba(177, 215, 247, 0.36)",
+      accent: "#82bfee",
+      accentSoft: "#d9d1ff",
     },
   },
   {
     id: "starlight",
-    name: "Starlit Mirror",
-    description: "수평선 위로 별빛이 번져 반사되는 고요한 우주 프레임",
+    name: "Shooting Star Wish",
+    description: "피치빛 하늘을 가르는 별똥별과 소원 구름 프레임",
     className: "theme-starlight",
-    preview: ["#21142c", "#c27baa"],
-    tagLine: "STARLIT MIRROR / WISH UPON THE WATER / 04",
-    shellLabel: "REFLECTED STARLIGHT ARCHIVE",
+    preview: ["#fff0dc", "#ffae78"],
+    previewAsset: "./assets/generated-frames/contact-previews/preview-shooting-star-wish-v9.webp",
+    frameAsset: "./assets/generated-frames/contact-sheet/frame-shooting-star-wish-v3.webp",
+    photoWindows: CONTACT_SHEET_WINDOWS,
+    tagLine: "SHOOTING STAR WISH / PEACH GLOW / 04",
+    shellLabel: "SHOOTING STAR WISH ARCHIVE",
     seed: 23,
     palette: {
-      bgA: "#21142c",
-      bgB: "#744778",
-      bgC: "#29172f",
-      ink: "#fff8fd",
-      border: "#f5ddea",
-      frameFill: "rgba(61,33,68,0.42)",
-      accent: "#e0a1d1",
-      accentSoft: "#f3d9ff",
+      bgA: "#fff0dc",
+      bgB: "#ffae78",
+      bgC: "#f78779",
+      ink: "#fffaf4",
+      border: "#fff1da",
+      frameFill: "rgba(255, 184, 130, 0.38)",
+      accent: "#ff956f",
+      accentSoft: "#ffd36f",
     },
   },
   {
     id: "nebula",
-    name: "Lilac Nebula",
-    description: "라일락 성운과 미세한 별가루가 감싸는 몽환적인 프레임",
+    name: "Candy Nebula",
+    description: "딸기우유 성운과 민트빛 캔디 리본이 흐르는 프레임",
     className: "theme-nebula",
-    preview: ["#321b48", "#d27aaf"],
-    tagLine: "LILAC NEBULA / STARDUST MEMORY / NO. 04",
-    shellLabel: "CELESTIAL CLOUD OBSERVATORY",
+    preview: ["#ffe6f2", "#ff86bd"],
+    previewAsset: "./assets/generated-frames/contact-previews/preview-candy-nebula-v9.webp",
+    frameAsset: "./assets/generated-frames/contact-sheet/frame-candy-nebula-v3.webp",
+    photoWindows: CONTACT_SHEET_WINDOWS,
+    tagLine: "CANDY NEBULA / STRAWBERRY MINT / NO. 04",
+    shellLabel: "CANDY NEBULA DREAM ARCHIVE",
     seed: 37,
     palette: {
-      bgA: "#321b48",
-      bgB: "#8d527f",
-      bgC: "#24142f",
-      ink: "#fff7fd",
-      border: "#f3d8ef",
-      frameFill: "rgba(67,34,77,0.38)",
-      accent: "#f69acb",
-      accentSoft: "#e6cdff",
+      bgA: "#ffe6f2",
+      bgB: "#ff86bd",
+      bgC: "#9edfd6",
+      ink: "#fffafd",
+      border: "#ffe9f5",
+      frameFill: "rgba(255, 144, 193, 0.34)",
+      accent: "#ff71b0",
+      accentSoft: "#9ee3d9",
     },
   },
   {
     id: "astral",
-    name: "Astral Spiral",
-    description: "두 개의 은하 소용돌이와 푸른 성운광을 담은 프레임",
+    name: "Moon Garden",
+    description: "초승달과 라일락 꽃이 피어난 보랏빛 밤 정원 프레임",
     className: "theme-astral",
-    preview: ["#28163b", "#9b6ac8"],
-    tagLine: "ASTRAL SPIRAL / TWIN GALAXIES / SERIES 04",
-    shellLabel: "DEEP SPACE DREAM SEQUENCE",
+    preview: ["#e7e0ff", "#8e78d8"],
+    previewAsset: "./assets/generated-frames/contact-previews/preview-moon-garden-v9.webp",
+    frameAsset: "./assets/generated-frames/contact-sheet/frame-moon-garden-v3.webp",
+    photoWindows: CONTACT_SHEET_WINDOWS,
+    tagLine: "MOON GARDEN / VIOLET TWILIGHT / SERIES 04",
+    shellLabel: "MOON GARDEN DREAM ARCHIVE",
     seed: 53,
     palette: {
-      bgA: "#28163b",
-      bgB: "#714595",
-      bgC: "#1b1029",
-      ink: "#fff8ff",
-      border: "#ead8f8",
-      frameFill: "rgba(55,29,70,0.4)",
-      accent: "#c99cf4",
-      accentSoft: "#f0d8ff",
+      bgA: "#e7e0ff",
+      bgB: "#8e78d8",
+      bgC: "#6753b7",
+      ink: "#fffaff",
+      border: "#f1eaff",
+      frameFill: "rgba(125, 101, 198, 0.38)",
+      accent: "#9d86e3",
+      accentSoft: "#c6d8ff",
     },
   },
 ];
 
-function svgToDataUrl(svg) {
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
 function createStickerAssetLibrary() {
   return [
     {
-      id: "spectral-alien",
-      label: "Spectral Alien",
-      dataUrl: svgToDataUrl(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
-          <defs>
-            <linearGradient id="spectralBody" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#f7fbff"/>
-              <stop offset="56%" stop-color="#ffd0e8"/>
-              <stop offset="100%" stop-color="#b58ad9"/>
-            </linearGradient>
-            <filter id="spectralGlow" x="-40%" y="-40%" width="180%" height="180%">
-              <feGaussianBlur stdDeviation="4" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-          </defs>
-          <g filter="url(#spectralGlow)" stroke="#f5f8ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M82 52c-8-20-4-34 8-34 13 0 19 12 19 29M158 52c8-20 4-34-8-34-13 0-19 12-19 29" fill="none"/>
-            <path d="M86 20l8 9-8 9-8-9zM154 20l8 9-8 9-8-9z" fill="#f3c6ff"/>
-            <path d="M65 72l30-29 15 17M175 72l-30-29-15 17" fill="none"/>
-            <path d="M69 67h102v91c0 31-23 55-51 55s-51-24-51-55z" fill="url(#spectralBody)" fill-opacity=".9"/>
-            <ellipse cx="94" cy="117" rx="17" ry="24" fill="#2a1730"/>
-            <ellipse cx="146" cy="117" rx="17" ry="24" fill="#2a1730"/>
-            <circle cx="99" cy="110" r="5" fill="#ffffff" stroke="none"/>
-            <circle cx="151" cy="110" r="5" fill="#ffffff" stroke="none"/>
-            <path d="M113 150c4 4 10 4 14 0M99 178h42" fill="none"/>
-          </g>
-        </svg>
-      `),
+      id: "fire-fairy",
+      label: "불꽃 요정",
+      dataUrl: "./assets/stickers/characters/fire-fairy.webp",
     },
     {
-      id: "pulsar-mark",
-      label: "Pulsar Mark",
-      dataUrl: svgToDataUrl(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
-          <g stroke="#f6f8ff" fill="none" stroke-linecap="round">
-            <circle cx="110" cy="110" r="12" fill="#ffffff"/>
-            <circle cx="110" cy="110" r="44" stroke-width="2" opacity=".38"/>
-            <path d="M110 14v192M14 110h192M42 42l136 136M178 42L42 178" stroke-width="5"/>
-            <path d="M80 110a30 12 0 1 0 60 0 30 12 0 1 0-60 0" stroke="#f0acd7" stroke-width="3" transform="rotate(-18 110 110)"/>
-          </g>
-        </svg>
-      `),
+      id: "cloud-fairy",
+      label: "구름 요정",
+      dataUrl: "./assets/stickers/characters/cloud-fairy.webp",
+      initialScale: 1.15,
+      maxScale: 5.4,
     },
     {
-      id: "orbit-seal",
-      label: "Orbit Seal",
-      dataUrl: svgToDataUrl(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220">
-          <g fill="none" stroke="#edf3ff" stroke-width="3">
-            <ellipse cx="120" cy="110" rx="94" ry="34" transform="rotate(-18 120 110)"/>
-            <ellipse cx="120" cy="110" rx="74" ry="18" transform="rotate(18 120 110)" opacity=".66"/>
-            <circle cx="120" cy="110" r="45" stroke="#d7a8f4" opacity=".8"/>
-            <path d="M120 28v164M38 110h164" opacity=".34"/>
-            <circle cx="120" cy="110" r="7" fill="#ffffff" stroke="none"/>
-            <circle cx="41" cy="134" r="6" fill="#ffabd5" stroke="none"/>
-          </g>
-        </svg>
-      `),
+      id: "moon-fairy",
+      label: "달빛 요정",
+      dataUrl: "./assets/stickers/characters/moon-fairy.webp",
     },
     {
-      id: "seraph",
-      label: "Seraph Silhouette",
-      dataUrl: svgToDataUrl(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
-          <g fill="#f7f8ff">
-            <circle cx="110" cy="56" r="18"/>
-            <path d="M90 76h40l18 92H72z"/>
-            <path d="M84 88C48 74 28 88 18 112c28-8 47 3 65 25z"/>
-            <path d="M136 88c36-14 56 0 66 24-28-8-47 3-65 25z"/>
-            <path d="M82 112c-30 2-48 18-52 42 24-12 44-8 60 5z" opacity=".72"/>
-            <path d="M138 112c30 2 48 18 52 42-24-12-44-8-60 5z" opacity=".72"/>
-          </g>
-          <ellipse cx="110" cy="52" rx="32" ry="10" fill="none" stroke="#f0b6e3" stroke-width="4"/>
-        </svg>
-      `),
+      id: "star-fairy",
+      label: "별빛 요정",
+      dataUrl: "./assets/stickers/characters/star-fairy.webp",
     },
     {
-      id: "lunar-flower",
-      label: "Lunar Flower",
-      dataUrl: svgToDataUrl(`
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220">
-          <g fill="none" stroke="#f3f6ff" stroke-width="4">
-            <path d="M110 56c-28-42-58-22-42 16 10 23 42 38 42 38s32-15 42-38c16-38-14-58-42-16z" fill="#d39be8" fill-opacity=".38"/>
-            <path d="M110 110v88M110 154c-26-19-48-12-58 8 23 0 40 10 58 26M110 168c24-18 45-14 57 5-22-1-39 7-57 20"/>
-            <circle cx="110" cy="92" r="10" fill="#ffffff"/>
-            <path d="M110 20v28M96 34h28" stroke="#ffabd5"/>
-          </g>
-        </svg>
-      `),
+      id: "sun-fairy",
+      label: "햇살 요정",
+      dataUrl: "./assets/stickers/characters/sun-fairy.webp",
     },
   ];
 }
@@ -322,6 +277,7 @@ const refs = {
   stripPreview: document.getElementById("stripPreview"),
   stripInner: document.getElementById("stripInner"),
   stripCosmos: document.getElementById("stripCosmos"),
+  stripFrameOverlay: document.getElementById("stripFrameOverlay"),
   stripSlots: document.getElementById("stripSlots"),
   stripThemeName: document.getElementById("stripThemeName"),
   footerTimestamp: document.getElementById("footerTimestamp"),
@@ -1877,44 +1833,24 @@ function createFrameElement(className, item) {
 
 function renderFrameDecorations() {
   const theme = getSelectedTheme();
-  const layout = ensureFrameLayout();
   refs.stripCosmos.innerHTML = "";
-
-  layout.filaments.forEach((filament) => {
-    const element = createFrameElement("frame-filament", filament);
-    element.style.width = `${filament.width}px`;
-    element.style.setProperty("--angle", `${filament.angle}deg`);
-    element.style.setProperty("--opacity", filament.opacity);
-    element.style.setProperty("--filament-color", withAlpha(theme.palette.accent, 0.48));
-    refs.stripCosmos.appendChild(element);
-  });
-
-  layout.crosses.forEach((cross) => {
-    const element = createFrameElement("frame-cross", cross);
-    element.style.setProperty("--cross-size", `${cross.size}px`);
-    element.style.setProperty("--cross-color", withAlpha(theme.palette.border, cross.opacity));
-    refs.stripCosmos.appendChild(element);
-  });
-
-  layout.stars.forEach((star, index) => {
-    const element = createFrameElement("frame-star", star);
-    element.style.width = `${star.size}px`;
-    element.style.height = `${star.size}px`;
-    element.style.setProperty("--star-color", star.color);
-    element.style.setProperty("--star-glow", star.glow);
-    element.style.setProperty("--opacity", star.opacity);
-    element.style.setProperty("--twinkle-delay", `${-(index % 7) * 0.43}s`);
-    refs.stripCosmos.appendChild(element);
-  });
-
   refs.frameStatus.textContent = theme.tagLine;
 }
 
 function createThemePreview(theme, element) {
   const [left, right] = theme.preview;
   element.dataset.theme = theme.id;
+  element.classList.add("has-frame-preview");
   element.style.setProperty("--preview-a", left);
   element.style.setProperty("--preview-b", right);
+  element.style.removeProperty("background-image");
+
+  const image = document.createElement("img");
+  image.className = "theme-card-preview-image";
+  image.src = theme.previewAsset;
+  image.alt = "";
+  image.draggable = false;
+  element.replaceChildren(image);
 }
 
 function renderThemeOptions() {
@@ -1929,7 +1865,7 @@ function renderThemeOptions() {
     createThemePreview(theme, button.querySelector(".theme-card-preview"));
     button.addEventListener("click", () => {
       state.selectedThemeId = theme.id;
-      state.frameLayout = createFrameLayout(theme);
+      state.frameLayout = null;
       renderThemeOptions();
       renderPreviewShell();
     });
@@ -1987,12 +1923,19 @@ function renderSessionStrip() {
 }
 
 function renderStripSlots() {
+  const theme = getSelectedTheme();
   refs.stripSlots.innerHTML = "";
 
   state.capturedPhotos.forEach((photo, index) => {
+    const photoWindow = theme.photoWindows[index];
     const slot = document.createElement("button");
     slot.type = "button";
     slot.className = "strip-slot";
+    slot.setAttribute("aria-label", `${index + 1}번째 사진 선택`);
+    slot.style.left = `${(photoWindow.x / FRAME_WIDTH) * 100}%`;
+    slot.style.top = `${(photoWindow.y / FRAME_HEIGHT) * 100}%`;
+    slot.style.width = `${(photoWindow.width / FRAME_WIDTH) * 100}%`;
+    slot.style.height = `${(photoWindow.height / FRAME_HEIGHT) * 100}%`;
     slot.classList.toggle("selected", index === state.activeSlotIndex);
     slot.addEventListener("click", () => {
       state.activeSlotIndex = index;
@@ -2008,7 +1951,6 @@ function renderStripSlots() {
     } else {
       const placeholder = document.createElement("div");
       placeholder.className = "strip-slot-placeholder";
-      placeholder.innerHTML = `<div><strong>FRAME ${String(index + 1).padStart(2, "0")}</strong><br />여기에 다음 컷이 들어와요.</div>`;
       slot.appendChild(placeholder);
     }
 
@@ -2203,10 +2145,11 @@ function renderPreviewShell() {
   const theme = getSelectedTheme();
   const filledCount = getFilledCount();
 
-  ensureFrameLayout();
   refs.stripPreview.className = `strip-preview ${theme.className}`;
   refs.stripPreview.style.setProperty("--frame-border", withAlpha(theme.palette.border, 0.62));
   refs.stripPreview.style.setProperty("--frame-glow", withAlpha(theme.palette.accent, 0.22));
+  refs.stripFrameOverlay.src = theme.frameAsset;
+  refs.stripFrameOverlay.alt = `${theme.name} 4컷 프레임`;
   refs.stripThemeName.textContent = theme.name;
   refs.themeSummary.textContent = theme.name;
   refs.footerTimestamp.textContent = filledCount ? formatTimestamp() : "READY TO SHOOT";
@@ -2676,11 +2619,13 @@ async function handleAutoCapture() {
 function addStickerToCanvas(asset) {
   const sticker = {
     id: `sticker-${state.nextStickerId}`,
+    assetId: asset.id,
     label: asset.label,
     dataUrl: asset.dataUrl,
     x: 0.5,
     y: 0.5,
-    scale: 1,
+    scale: asset.initialScale ?? 1,
+    maxScale: asset.maxScale ?? STICKER_MAX_SCALE,
     rotation: 0,
     mirrored: false,
   };
@@ -2752,7 +2697,11 @@ function startStickerScale(event, stickerId, element) {
 
   bindStickerPointerGesture(event, (moveEvent) => {
     const distance = Math.hypot(moveEvent.clientX - centerX, moveEvent.clientY - centerY);
-    sticker.scale = clamp(startScale * (distance / startDistance), 0.45, 2.6);
+    sticker.scale = clamp(
+      startScale * (distance / startDistance),
+      STICKER_MIN_SCALE,
+      sticker.maxScale ?? STICKER_MAX_SCALE,
+    );
     applyStickerTransform(element, sticker);
   });
 }
@@ -3070,142 +3019,56 @@ async function generateStripDataUrl() {
   const theme = getSelectedTheme();
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
+  canvas.width = FRAME_WIDTH;
+  canvas.height = FRAME_HEIGHT;
 
-  await document.fonts.load('48px "ZenSerif"').catch(() => undefined);
-
-  const width = 960;
-  const outerPadding = 80;
-  const shellInset = 20;
-  const topBarHeight = 136;
-  const shellHeaderGap = 20;
-  const footerHeight = 120;
-  const slotGap = 26;
-  const photoWidth = width - outerPadding * 2;
-  const photoHeight = Math.round((photoWidth * 5) / 4);
-  const slotsTop = outerPadding + topBarHeight + shellHeaderGap;
-  const height = slotsTop + photoHeight * CUT_COUNT + slotGap * (CUT_COUNT - 1) + footerHeight + outerPadding;
-  const shellX = shellInset;
-  const shellY = shellInset;
-  const shellWidth = width - shellInset * 2;
-  const shellHeight = height - shellInset * 2;
-  const footerY = height - footerHeight;
-
-  canvas.width = width;
-  canvas.height = height;
-
-  drawStripBackground(context, theme, width, height);
-
-  context.fillStyle = theme.palette.frameFill;
-  context.fillRect(shellX, shellY, shellWidth, shellHeight);
-  context.strokeStyle = withAlpha(theme.palette.border, 0.34);
-  context.lineWidth = 1;
-  context.strokeRect(shellX, shellY, shellWidth, shellHeight);
-  context.strokeRect(shellX + 10, shellY + 10, shellWidth - 20, shellHeight - 20);
-
-  drawWindowLights(context, shellX + 24, shellY + 24);
-
-  context.fillStyle = theme.palette.ink;
-  context.font = '48px "ZenSerif", serif';
-  context.textAlign = "left";
-  context.fillText("SPECTRA", outerPadding, shellY + 70);
-  context.font = '22px "ZenSerif", serif';
-  context.fillStyle = withAlpha(theme.palette.border, 0.72);
-  context.fillText(theme.name, outerPadding, shellY + 100);
-
-  context.font = '10px "ZenSerif", serif';
-  context.textAlign = "right";
-  context.fillStyle = withAlpha(theme.palette.border, 0.55);
-  context.fillText(theme.shellLabel, width - outerPadding, shellY + 42);
-  context.fillText("FOUR EXPOSURES / ARCHIVE 04", width - outerPadding, shellY + 62);
-  context.beginPath();
-  context.moveTo(outerPadding, shellY + topBarHeight - 10);
-  context.lineTo(width - outerPadding, shellY + topBarHeight - 10);
-  context.strokeStyle = withAlpha(theme.palette.border, 0.24);
-  context.stroke();
-
-  drawFrameLayout(
-    context,
-    theme,
-    shellX,
-    shellY,
-    shellWidth,
-    shellHeight,
-    slotsTop,
-    slotsTop + photoHeight * CUT_COUNT + slotGap * (CUT_COUNT - 1),
-  );
-
-  const loadedPhotos = await Promise.all(
-    state.capturedPhotos.map((photo) => (photo ? loadImage(photo) : Promise.resolve(null))),
-  );
+  const [frameImage, loadedPhotos] = await Promise.all([
+    loadImage(theme.frameAsset),
+    Promise.all(state.capturedPhotos.map((photo) => (photo ? loadImage(photo) : Promise.resolve(null)))),
+  ]);
 
   loadedPhotos.forEach((image, index) => {
-    const slotY = slotsTop + index * (photoHeight + slotGap);
-
-    context.save();
-    context.beginPath();
-    context.rect(outerPadding, slotY, photoWidth, photoHeight);
-    context.clip();
-
-    if (image) {
-      context.drawImage(image, outerPadding, slotY, photoWidth, photoHeight);
-      context.fillStyle = "rgba(5, 8, 16, 0.06)";
-      context.fillRect(outerPadding, slotY, photoWidth, photoHeight);
-    } else {
-      context.fillStyle = "#2c1934";
-      context.fillRect(outerPadding, slotY, photoWidth, photoHeight);
-      context.fillStyle = withAlpha(theme.palette.ink, 0.72);
-      context.textAlign = "center";
-      context.font = '14px "ZenSerif", serif';
-      context.fillText(`FRAME ${String(index + 1).padStart(2, "0")}`, width / 2, slotY + photoHeight / 2);
+    if (!image) {
+      return;
     }
 
-    context.restore();
-
-    context.strokeStyle = withAlpha(theme.palette.border, 0.52);
-    context.lineWidth = 1;
-    context.strokeRect(outerPadding, slotY, photoWidth, photoHeight);
-    context.strokeStyle = withAlpha(theme.palette.border, 0.14);
-    context.strokeRect(outerPadding + 10, slotY + 10, photoWidth - 20, photoHeight - 20);
-
+    const photoWindow = theme.photoWindows[index];
     context.save();
-    context.translate(outerPadding + 22, slotY + photoHeight - 22);
-    context.strokeStyle = withAlpha(theme.palette.accentSoft, 0.72);
-    context.lineWidth = 1;
+    context.translate(photoWindow.x, photoWindow.y);
     context.beginPath();
-    context.moveTo(-8, 0);
-    context.lineTo(8, 0);
-    context.moveTo(0, -8);
-    context.lineTo(0, 8);
-    context.stroke();
+    context.rect(0, 0, photoWindow.width, photoWindow.height);
+    context.clip();
+    drawImageCover(
+      context,
+      image,
+      image.naturalWidth,
+      image.naturalHeight,
+      photoWindow.width,
+      photoWindow.height,
+    );
     context.restore();
   });
 
-  const stageWidth = shellWidth;
-  const stageHeight = shellHeight;
+  context.drawImage(frameImage, 0, 0, FRAME_WIDTH, FRAME_HEIGHT);
+
   const loadedStickers = await Promise.all(
     state.stickers.map((sticker) => loadImage(sticker.dataUrl).then((image) => ({ image, sticker }))),
   );
 
   loadedStickers.forEach(({ image, sticker }) => {
-    const size = stageWidth * STICKER_BASE_WIDTH_RATIO * sticker.scale;
-    const x = shellX + sticker.x * stageWidth;
-    const y = shellY + sticker.y * stageHeight;
+    const width = FRAME_WIDTH * STICKER_BASE_WIDTH_RATIO * sticker.scale;
+    const imageRatio = image.naturalWidth / image.naturalHeight;
+    const height = width / imageRatio;
+    const x = sticker.x * FRAME_WIDTH;
+    const y = sticker.y * FRAME_HEIGHT;
 
     context.save();
     context.translate(x, y);
     context.rotate((sticker.rotation * Math.PI) / 180);
     context.scale(sticker.mirrored ? -1 : 1, 1);
-    context.drawImage(image, -size / 2, -size / 2, size, size);
+    context.drawImage(image, -width / 2, -height / 2, width, height);
     context.restore();
   });
-
-  context.fillStyle = theme.palette.ink;
-  context.font = '10px "ZenSerif", serif';
-  context.textAlign = "left";
-  context.fillText("CELESTIAL IMAGE ARCHIVE", outerPadding, footerY + 42);
-  context.fillText(theme.tagLine, outerPadding, footerY + 58);
-  context.textAlign = "right";
-  context.fillText(formatTimestamp(), width - outerPadding, footerY + 58);
 
   return canvas.toDataURL("image/png");
 }

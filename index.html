@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SPECTRA PHOTOBOOTH</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260806-0900" />
+    <link rel="stylesheet" href="./styles.css?v=20260806-2110" />
   </head>
   <body>
     <div class="cosmic-video-bg" aria-hidden="true">
@@ -239,7 +239,7 @@
               <div class="sticker-toolbox">
                 <section class="settings-block">
                   <div class="settings-header">
-                    <h3>스펙트럴 오브젝트</h3>
+                    <h3>캐릭터 스티커</h3>
                     <span>눌러서 프레임에 추가</span>
                   </div>
                   <div class="sticker-options" id="stickerOptions"></div>
@@ -296,7 +296,7 @@
             <div class="save-layout">
               <div class="workflow-preview-mount save-preview-mount" id="previewMountSave"></div>
               <div class="save-command-area">
-                <span class="save-format">PNG · 960 × AUTO · FOUR EXPOSURES</span>
+                <span class="save-format">PNG · 1600 × 2300 · FOUR EXPOSURES</span>
                 <button class="action-button lime save-primary" id="saveButton" type="button" disabled>PNG 저장</button>
                 <button class="mini-button" id="restartButton" type="button">새로운 네컷 만들기</button>
               </div>
@@ -340,6 +340,7 @@
                 <span>PSR / SERIES 04</span>
               </div>
               <div class="strip-slots" id="stripSlots"></div>
+              <img class="strip-frame-overlay" id="stripFrameOverlay" alt="" draggable="false" />
               <div class="sticker-layer" id="stickerLayer"></div>
               <div class="strip-footer">
                 <span>CELESTIAL IMAGE ARCHIVE</span>
@@ -435,6 +436,6 @@
       </button>
     </template>
 
-    <script src="./app.js?v=20260806-0900"></script>
+    <script src="./app.js?v=20260806-2110"></script>
   </body>
 </html>
